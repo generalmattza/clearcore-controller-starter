@@ -13,22 +13,17 @@ void Motor::printMessage(const char *message) const
   Serial.println(buffer); // Single call to Serial
 }
 
-void Motor::initMotor(void) const
+virtual void Motor::initMotor(void) const
 {
   // Set the motor's HLFB mode to bipolar PWM
   connector->HlfbMode(MotorDriver::HLFB_MODE_HAS_BIPOLAR_PWM);
 
   // Set the HFLB carrier frequency to 482 Hz
   connector->HlfbCarrier(MotorDriver::HLFB_CARRIER_482_HZ);
+}
 
-  // Sets the maximum velocity for each move
-  connector->VelMax(getVelocityLimit());
-
-  // Set the maximum acceleration for each move
-  connector->AccelMax(getAccelLimit());
-
-  connector->EStopDecelMax(getEstopDecelLimit());
-
+virtual void Motor::postInitMotor(void) const
+{
   // Enables the motor; homing will begin automatically if enabled
   connector->EnableRequest(true);
 
@@ -39,7 +34,7 @@ void Motor::initMotor(void) const
 
   clearErrors();
 
-  // printMessage("Motor initialized.");
+  printMessage("Motor initialized.");
 }
 
 void Motor::clearErrors(void) const
@@ -49,50 +44,8 @@ void Motor::clearErrors(void) const
   {
     connector->MoveStopAbrupt();
     clearFaults();
-    // printMessage("Motor errors cleared.");
+    printMessage("Motor errors cleared.");
   }
-}
-
-bool Motor::MoveDistance(int distance) const
-{
-  // Check if a motor alert is currently preventing motion
-  // Clear alert if configured to do so
-  if (!handleAlerts())
-  {
-    return false;
-  }
-
-  // Command the move of incremental distance
-  connector->Move(distance);
-
-  // Waits for HLFB to assert (signaling the move has successfully completed)
-  while ((!connector->StepsComplete() || connector->HlfbState() != MotorDriver::HLFB_ASSERTED) && !connector->StatusReg().bit.AlertsPresent)
-  {
-    continue;
-  }
-  // Check if motor alert occurred during move
-  // Clear alert if configured to do so
-  if (!handleAlerts())
-  {
-    return false;
-  }
-  return true;
-}
-
-bool Motor::MoveAtVelocity(int32_t velocity) const
-{
-  // Check if a motor alert is currently preventing motion
-  // Clear alert if configured to do so
-  if (!handleAlerts())
-  {
-    // Motor alert detected. Attempting to clear alert."
-    return false;
-  }
-
-  // Command the velocity move
-  connector->MoveVelocity(velocity);
-
-  return true;
 }
 
 bool Motor::handleAlerts(void) const
@@ -128,7 +81,6 @@ void Motor::clearFaults() const
   // Enable motor
   enableMotor();
 }
-//------------------------------------------------------------------------------
 
 int32_t Motor::getAlerts() const
 {
@@ -156,27 +108,6 @@ int32_t Motor::getStatus(void) const
   return connector->StatusReg().bit.ReadyState;
 }
 
-int8_t Motor::getTorqueCurrent(void) const
-{
-  MotorDriver::HlfbStates hlfbState = connector->HlfbState();
-  // Write the HLFB state to the serial port
-  if (hlfbState == MotorDriver::HLFB_HAS_MEASUREMENT)
-  {
-    // Writes the torque measured, as a percent of motor peak torque rating
-    return int(round(connector->HlfbPercent()));
-  }
-  return 0;
-}
-
-int32_t Motor::getPositionCurrent(void) const
-{
-  return connector->PositionRefCommanded();
-}
-
-int32_t Motor::getVelocityCurrent(void) const
-{
-  return connector->VelocityRefCommanded();
-}
 void Motor::disableMotor(void) const
 {
   connector->MoveStopDecel(getEstopDecelLimit());
@@ -193,16 +124,6 @@ void Motor::stopMotor(void) const
   connector->MoveStopDecel(getDecelLimit());
 }
 
-bool Motor::validateMove(bool negDirection) const
-{
-  return connector->ValidateMove(negDirection);
-}
-
-void Motor::setPositionRef(int32_t position) const
-{
-  connector->PositionRefSet(position);
-}
-
 bool Motor::setLimitSwitchPositive(ClearCorePins pin)
 {
   return connector->LimitSwitchPos(pin);
@@ -212,8 +133,60 @@ bool Motor::setLimitSwitchNegative(ClearCorePins pin)
   return connector->LimitSwitchNeg(pin);
 }
 
+// SDMotor class implementation
+// Used for SDHP type motors
+
+virtual void SDMotor::initMotor(void) const
+{
+  // Initialize the motor using the base class method
+  Motor::initMotor();
+
+  // Sets the maximum velocity for each move
+  connector->VelMax(getVelocityLimit());
+
+  // Set the maximum acceleration for each move
+  connector->AccelMax(getAccelLimit());
+
+  connector->EStopDecelMax(getEstopDecelLimit());
+
+  // Perform the post-initialization steps
+  Motor::postInitMotor();
+}
+
+int8_t SDMotor::getTorqueCurrent(void) const
+{
+  MotorDriver::HlfbStates hlfbState = connector->HlfbState();
+  // Write the HLFB state to the serial port
+  if (hlfbState == MotorDriver::HLFB_HAS_MEASUREMENT)
+  {
+    // Writes the torque measured, as a percent of motor peak torque rating
+    return int(round(connector->HlfbPercent()));
+  }
+  return 0;
+}
+
+int32_t SDMotor::getPositionCurrent(void) const
+{
+  return connector->PositionRefCommanded();
+}
+
+int32_t SDMotor::getVelocityCurrent(void) const
+{
+  return connector->VelocityRefCommanded();
+}
+
+bool SDMotor::validateMove(bool negDirection) const
+{
+  return connector->ValidateMove(negDirection);
+}
+
+void SDMotor::setPositionRef(int32_t position) const
+{
+  connector->PositionRefSet(position);
+}
+
 template <typename T>
-bool Motor::velocityMovementGuard(T velocity) const
+bool SDMotor::velocityMovementGuard(T velocity) const
 {
   bool negDirection;
   negDirection = velocity < 0;
@@ -226,7 +199,141 @@ bool Motor::velocityMovementGuard(T velocity) const
   return true;
 }
 
-bool Motor::EStopConnector(ClearCorePins pin) const
+bool SDMotor::EStopConnector(ClearCorePins pin) const
 {
   return connector->EStopConnector(pin);
+}
+
+bool SDMotor::MoveDistance(int distance) const
+{
+  // Check if a motor alert is currently preventing motion
+  // Clear alert if configured to do so
+  if (!handleAlerts())
+  {
+    return false;
+  }
+
+  // Command the move of incremental distance
+  connector->Move(distance);
+
+  // Waits for HLFB to assert (signaling the move has successfully completed)
+  while ((!connector->StepsComplete() || connector->HlfbState() != MotorDriver::HLFB_ASSERTED) && !connector->StatusReg().bit.AlertsPresent)
+  {
+    continue;
+  }
+  // Check if motor alert occurred during move
+  // Clear alert if configured to do so
+  if (!handleAlerts())
+  {
+    return false;
+  }
+  return true;
+}
+
+bool SDMotor::MoveAtVelocity(int32_t velocity) const
+{
+  // Check if a motor alert is currently preventing motion
+  // Clear alert if configured to do so
+  if (!handleAlerts())
+  {
+    // Motor alert detected. Attempting to clear alert."
+    return false;
+  }
+
+  // Command the velocity move
+  connector->MoveVelocity(velocity);
+
+  return true;
+}
+
+// MCMotor class implementation
+// Used for MC type motors
+
+/*
+*CommandVelocity
+*
+* Command the motor to move using a velocity of commandedVelocity
+* Prints the move status to the USB serial port
+*
+* Parameters : *int commandedVelocity -
+The velocity to command
+*
+* Returns : True / False depending on whether the velocity was successfully
+* commanded.
+*/
+bool CommandVelocity(int32_t commandedVelocity)
+{
+  if (abs(commandedVelocity) > maxVelocity)
+  {
+    SerialPort.SendLine("Move rejected, invalid velocity requested.");
+    return false;
+  }
+
+  SerialPort.Send("Commanding velocity: ");
+  SerialPort.SendLine(commandedVelocity);
+
+  // If there is a deadband defined, the range of the PWM scale is reduced.
+  double rangeUnsigned = 127.5 - (pwmDeadBand / 100 * 255);
+
+  // Find the scaling factor of our velocity range mapped to the PWM duty cycle
+  // range (the PWM to the ClearPath is bipolar, so the range starts at a 50%
+  // duty cycle).
+  double scaleFactor = rangeUnsigned / maxVelocity;
+
+  // Scale the velocity command to our duty cycle range.
+  double dutyRequest;
+  if (commandedVelocity < 0)
+  {
+    dutyRequest = 127.5 - (pwmDeadBand / 100 * 255) + (commandedVelocity * scaleFactor);
+  }
+  else if (commandedVelocity > 0)
+  {
+    dutyRequest = 127.5 + (pwmDeadBand / 100 * 255) + (commandedVelocity * scaleFactor);
+  }
+  else
+  {
+    dutyRequest = 128.0;
+  }
+
+  // Command the move.
+  motor.MotorInBDuty(dutyRequest);
+
+  SerialPort.SendLine("Velocity Commanded");
+  return true;
+}
+
+/*
+*LimitTorque
+*
+* Command the motor to limit the maximum applied torque to(limit) %
+* Prints the move status to the USB serial port
+*
+* Parameters : *int limit
+- The torque level to command
+*
+* Returns : True / False depending on whether the torque limit was successfully
+* commanded.
+*/
+bool LimitTorque(double limit)
+{
+  if (limit > torqueLimit || limit < torqueLimitAlternate)
+  {
+    SerialPort.SendLine("Torque limiting rejected, invalid torque requested.");
+    return false;
+  }
+  SerialPort.Send("Limit torque to: ");
+  SerialPort.Send(limit);
+  SerialPort.SendLine("%.");
+
+  // Find the scaling factor of our torque range mapped to the PWM duty cycle
+  // range (255 is the max duty cycle).
+  double scaleFactor = 255 / (torqueLimit - torqueLimitAlternate);
+
+  // Scale the torque limit command to our duty cycle range.
+  uint8_t dutyRequest = (torqueLimit - limit) * scaleFactor;
+
+  // Command the new torque limit.
+  motor.MotorInADuty(dutyRequest);
+
+  return true;
 }

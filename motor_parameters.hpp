@@ -11,7 +11,7 @@
  * behavior, such as velocity limits, acceleration, deceleration, and pulses per
  * revolution (PPR).
  */
-class MotorParameters
+class SDMotorParameters
 {
 public:
   int32_t velocity_limit;    // Velocity limit in PPS
@@ -37,10 +37,10 @@ public:
    * @param e_stop_d_limit Emergency deceleration limit in PPS (default 1000000).
    * @param m_ppr Pulses per revolution (default 6400).
    */
-  MotorParameters(int32_t v_limit = 1800, int32_t v_normal = 600,
-                  int32_t v_fine = 20, int32_t v_rapid = 1700,
-                  int32_t a_limit = 400000, int32_t d_limit = 400000,
-                  int32_t e_stop_d_limit = 1000000, int32_t m_ppr = 6400)
+  SDMotorParameters(int32_t v_limit = 1800, int32_t v_normal = 600,
+                    int32_t v_fine = 20, int32_t v_rapid = 1700,
+                    int32_t a_limit = 400000, int32_t d_limit = 400000,
+                    int32_t e_stop_d_limit = 1000000, int32_t m_ppr = 6400)
       : motor_ppr(m_ppr)
   {
     // Convert RPM to PPS for velocity limits
@@ -69,7 +69,8 @@ public:
 };
 
 // MotorParameters can be subclassed to create custom default values at initiliazation
-class MotorParametersX : public MotorParameters {
+class MotorParametersX : public SDMotorParameters
+{
 public:
   MotorParametersX()
       : MotorParameters(
@@ -86,5 +87,19 @@ public:
   }
 };
 
+
+
+
+class MCMotorParameters
+{
+  double velocity_limit;    // Velocity limit in RPM
+  double pwm_deadband;      // PWM deadband in percentage
+  double torque_limit;      // Torque limit in Nm
+
+
+  MCMotorParameters(double v_limit = 600, double pwm_db = 0.1, double t_limit = 0.5)
+      : velocity_limit(v_limit), pwm_deadband(pwm_db), torque_limit(t_limit)
+  {
+  }
 
 #endif // __MOTOR_PARAMETERS_HPP__

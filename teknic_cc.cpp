@@ -1,23 +1,19 @@
 #include "teknic_cc.hpp"
 
-template <typename Func>
-void teknic_cc::multiMotorFunction(Motor *motors[], Func function)
-{
-  for (uint8_t i = 0; i < motor_count; i++)
-  {
-    (motors[i]->*function)(); // Call the member function on each motor
-  }
-}
 
 void teknic_cc::init(void)
 {
 
   MotorMgr.MotorInputClocking(MotorManager::CLOCK_RATE_NORMAL);
 
-  MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_STEP_AND_DIR);
+  // MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_STEP_AND_DIR);
+  MotorMgr.MotorModeSet(MotorManager::MOTOR_ALL, Connector::CPM_MODE_A_PWM_B_PWM);
 
-  // Initialize the motors
-  multiMotorFunction(motors, &Motor::initMotor);
+
+  for (uint8_t i = 0; i < motor_count; i++)
+  {
+    motors[i]->initMotor();
+  }
 
   enableWatchdog();
 
