@@ -261,44 +261,40 @@ The velocity to command
 * Returns : True / False depending on whether the velocity was successfully
 * commanded.
 */
-bool CommandVelocity(int32_t commandedVelocity)
+bool MCMotor::MoveAtVelocity(int32_t velocity)
 {
-  if (abs(commandedVelocity) > maxVelocity)
+  if (abs(velocity) > this->velocity_limit)
   {
-    SerialPort.SendLine("Move rejected, invalid velocity requested.");
+    printMessage("Move rejected, invalid velocity requested.");
     return false;
   }
 
-  SerialPort.Send("Commanding velocity: ");
-  SerialPort.SendLine(commandedVelocity);
-
   // If there is a deadband defined, the range of the PWM scale is reduced.
-  double rangeUnsigned = 127.5 - (pwmDeadBand / 100 * 255);
+  double range_unsigned = 127.5 - (this->pwm_deadband / 100 * 255);
 
   // Find the scaling factor of our velocity range mapped to the PWM duty cycle
   // range (the PWM to the ClearPath is bipolar, so the range starts at a 50%
   // duty cycle).
-  double scaleFactor = rangeUnsigned / maxVelocity;
+  double scale_factor = range_unsigned / this->velocity_limit;
 
   // Scale the velocity command to our duty cycle range.
-  double dutyRequest;
-  if (commandedVelocity < 0)
+  double duty_request;
+  if (velocity < 0)
   {
-    dutyRequest = 127.5 - (pwmDeadBand / 100 * 255) + (commandedVelocity * scaleFactor);
+    duty_request = 127.5 - (this->pwm_deadband / 100 * 255) + (velocity * scale_factor);
   }
-  else if (commandedVelocity > 0)
+  else if (velocity > 0)
   {
-    dutyRequest = 127.5 + (pwmDeadBand / 100 * 255) + (commandedVelocity * scaleFactor);
+    duty_request = 127.5 + (this->pwm_deadband / 100 * 255) + (velocity * scale_factor);
   }
   else
   {
-    dutyRequest = 128.0;
+    duty_request = 128.0;
   }
 
   // Command the move.
-  motor.MotorInBDuty(dutyRequest);
+  motor.MotorInBDuty(duty_request);
 
-  SerialPort.SendLine("Velocity Commanded");
   return true;
 }
 
@@ -314,26 +310,23 @@ bool CommandVelocity(int32_t commandedVelocity)
 * Returns : True / False depending on whether the torque limit was successfully
 * commanded.
 */
-bool LimitTorque(double limit)
+bool MCMotor::LimitTorque(double limit)
 {
-  if (limit > torqueLimit || limit < torqueLimitAlternate)
+  if (limit > this->torque_limit)
   {
-    SerialPort.SendLine("Torque limiting rejected, invalid torque requested.");
+    printMessage("Torque limiting rejected, invalid torque requested.");
     return false;
   }
-  SerialPort.Send("Limit torque to: ");
-  SerialPort.Send(limit);
-  SerialPort.SendLine("%.");
 
   // Find the scaling factor of our torque range mapped to the PWM duty cycle
   // range (255 is the max duty cycle).
-  double scaleFactor = 255 / (torqueLimit - torqueLimitAlternate);
+  double scale_factor = 255 / (this->torque_limit);
 
   // Scale the torque limit command to our duty cycle range.
-  uint8_t dutyRequest = (torqueLimit - limit) * scaleFactor;
+  uint8_t duty_request = (this->torque_limit - limit) * scale_factor;
 
   // Command the new torque limit.
-  motor.MotorInADuty(dutyRequest);
+  motor.MotorInADuty(duty_request);
 
   return true;
 }

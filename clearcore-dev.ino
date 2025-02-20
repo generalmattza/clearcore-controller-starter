@@ -1,5 +1,4 @@
 #include "teknic_cc.hpp"
-#include "F710Controller.hpp"
 #include "motor.hpp"
 #include "ClearCore.h"
 // #include "machine_state.hpp"
@@ -26,8 +25,6 @@
 const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
 // Desired loop interval (static const)
 const unsigned long interval_ms = 0;  // ~ 100Hz
-// Controller timeout in ms
-const unsigned long controller_timeout_ms = 500;
 // Delay before attempting to reconnect the serial port (ms)
 const unsigned long reconnectInterval = 500;
 
@@ -38,24 +35,19 @@ const unsigned long reconnectInterval = 500;
 // Acceleration and deceleration limits are in PPS
 // velocity_limit, velocity_normal, velocity_fine, velocity_rapid, accel_limit, decel_limit, estop_decel_limit, motor_ppr
 
-MotorParameters motor_params_0;  // Default values for X-axis
+MCMotorParameters motor_params;  // Default values for X-axis
 // MotorParametersY motor_params_y;  // Default values for Y-axis
 // MotorParametersZ motor_params_z;  // Default values for Z-axis
 
 // Define Motor objects
-Motor motor0(&ConnectorM0, "M0", &motor_params_0);
-// Motor motor1(&ConnectorM1, "Y", &motor_params_y);
-// Motor motor2(&ConnectorM2, "Z0", &motor_params_z);
-// Motor motor3(&ConnectorM3, "Z1", &motor_params_z);
+MCMotor motor0(&ConnectorM0, "M0", &motor_params);
+
 
 Motor *motors[] = { &motor0 };
 uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 
 // Define Management Objects
 // ************************************************************************************************
-
-// Logitech F710 controller - Button parser
-F710Controller controller(&SerialPort, controller_timeout_ms);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort, &motorEnableSwitch);
@@ -142,13 +134,8 @@ void setup() {
   // Initialize the Serial port
   reconnectSerial();
 
-  // Initialise the operator controller
-  controller.begin();
-
   // Initialize the motion controller
   clearcore.init();
-
-
 
   // Setup limit switches
   motor0.setLimitSwitchNegative(DI6);
@@ -172,31 +159,105 @@ void setup() {
 
 // Main Loop
 // ************************************************************************************************
-
-/**
- * @brief Returns the largest value in magntiude from two given values
- *
- * @param value1 First value to compare
- * @param value2 Second value to compare
- * @return The largest signed value in magnitude
+/** 
+ * @brief Manages the loop frequency by applying a delay if required
+ * 
+ * This function will manage the loop frequency by applying a delay if required.
+ * It will calculate the elapsed time since the start of the loop and compare it to the desired interval.
+ * If the elapsed time is less than the desired interval, it will apply a delay to ensure the loop runs at the desired frequency.
+ * 
+ * @param start_time The start time of the loop in milliseconds
+ * 
  */
-float getLargestMagnitude(float value1, float value2) {
-  // Compare absolute values and return the one with the largest magnitude
-  return (abs(value1) > abs(value2)) ? value1 : value2;
+void manageLoopFrequency(unsigned long start_time) {
+
+  unsigned long elapsed_time = millis() - start_time;
+  if (elapsed_time < interval_ms) {
+    delay(interval_ms - elapsed_time);  // Delay the remaining time
+  }
 }
 
-// The below routine is guarded by the Deadman Switch protection.
-void runDeadmanGuardedRoutine(void) {
-  // Two different machine modes are programmed - POSITIONING and DRIVING
-  // controller.getOperationModeButton selects between these two modes
+void loop() {
+  unsigned long start_time = millis();  // Record the start time of the loop
+
+  // Update the machine state
+  // Also fetches the latest controller data
+  // machine_state.updateMachineState();
+  // Watchdog on receipt of last data from controller
+  // IF no data has been received within a specified time window
+  // THEN perform a hard stop and diable the motors (generates a motor fault)
+  // ELSE continue with program
+  if (false) {
+    clearcore.disableMotors();
+  } else {
+    /** GUARDED ROUTINE
+    ****************************************
+    *
+    * LOGIC
+
+    **/
+
+    // START OF GUARDED ROUTINE
+    bool motor_direction = dirSelectSwitch.State();
+    if (true) {
+      int32_t velocity;
+      if (motor_direction) {
+        velocity = 1000;
+      } else {
+        velocity = -1000;
+      }
+      motor0.MoveAtVelocity(velocity);
+    }
+
+    // END OF GUARDED ROUTINE
+
+    /** NON-GUARDED ROUTINE
+    ****************************************
+
+    * LOGIC
+
+    **/
+
+    // START OF NON-GUARDED ROUTINE
+    if (true) {
+      // SerialPort.println("Clearing motors");
+      clearcore.clearFaults();
+    }
+    // END OF NON-GUARDED ROUTINE
+  }
+
+  /** PERSISTENT ROUTINE
+   ****************************************
+   * This routine will run always, regardless of the state of the controller or Deadman switch
+   **/
+
+  // START OF PERSISTENT ROUTINE
+
+  // Check if Serial is connected
+  if (checkSerialConnection()) {
+    // Publish data periodically, every DataCollectorUpdateInterval ms
+    // publishSerialDataPeriodically();
+  }
+  // Manage the loop frequency by applying a delay if required
+  manageLoopFrequency(start_time);
+  // Pet watchdog to prevent system reset.
+  clearcore.resetWatchdog();
+
+  // END OF PERSISTENT ROUTINE
 }
 
-void runHomingRoutine(void) {
-
-  // Homing routine is currently not automatic, and only includes ability to zero axes selectively
-
-  return;
-}
+// /**
+//  * @brief Returns the largest value in magntiude from two given values
+//  *
+//  * @param value1 First value to compare
+//  * @param value2 Second value to compare
+//  * @return The largest signed value in magnitude
+//  */
+// float getLargestMagnitude(float value1, float value2)
+// {
+//   // Compare absolute values and return the one with the largest magnitude
+//   return (abs(value1) > abs(value2)) ? value1 : value2;
+// }
 
 // void publishSerialDataPeriodically(void) {
 //   static unsigned long last_transmit_time = 0;
@@ -256,90 +317,3 @@ void runHomingRoutine(void) {
 //     // SerialPort.flush();
 //   }
 // }
-
-/** 
- * @brief Manages the loop frequency by applying a delay if required
- * 
- * This function will manage the loop frequency by applying a delay if required.
- * It will calculate the elapsed time since the start of the loop and compare it to the desired interval.
- * If the elapsed time is less than the desired interval, it will apply a delay to ensure the loop runs at the desired frequency.
- * 
- * @param start_time The start time of the loop in milliseconds
- * 
- */
-void manageLoopFrequency(unsigned long start_time) {
-
-  unsigned long elapsed_time = millis() - start_time;
-  if (elapsed_time < interval_ms) {
-    delay(interval_ms - elapsed_time);  // Delay the remaining time
-  }
-}
-
-void loop() {
-  unsigned long start_time = millis();  // Record the start time of the loop
-
-  // Update the machine state
-  // Also fetches the latest controller data
-  // machine_state.updateMachineState();
-  // Watchdog on receipt of last data from controller
-  // IF no data has been received within a specified time window
-  // THEN perform a hard stop and diable the motors (generates a motor fault)
-  // ELSE continue with program
-  if (false) {
-    clearcore.disableMotors();
-  } else {
-    /** GUARDED ROUTINE
-    ****************************************
-    *
-    * LOGIC
-
-    **/
-
-    // START OF GUARDED ROUTINE
-    bool motor_direction = dirSelectSwitch.State();
-    if (true) {
-      int32_t speed;
-      if (motor_direction) {
-        speed = 10000;
-      } else {
-        speed = -10000;
-      }
-      motor0.MoveAtVelocity(speed);
-    }
-
-    // END OF GUARDED ROUTINE
-
-    /** NON-GUARDED ROUTINE
-    ****************************************
-
-    * LOGIC
-
-    **/
-
-    // START OF NON-GUARDED ROUTINE
-    if (true) {
-      // SerialPort.println("Clearing motors");
-      clearcore.clearFaults();
-    }
-    // END OF NON-GUARDED ROUTINE
-  }
-
-  /** PERSISTENT ROUTINE
-   ****************************************
-   * This routine will run always, regardless of the state of the controller or Deadman switch
-   **/
-
-  // START OF PERSISTENT ROUTINE
-
-  // Check if Serial is connected
-  if (checkSerialConnection()) {
-    // Publish data periodically, every DataCollectorUpdateInterval ms
-    // publishSerialDataPeriodically();
-  }
-  // Manage the loop frequency by applying a delay if required
-  manageLoopFrequency(start_time);
-  // Pet watchdog to prevent system reset.
-  clearcore.resetWatchdog();
-
-  // END OF PERSISTENT ROUTINE
-}

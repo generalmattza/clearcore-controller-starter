@@ -53,8 +53,7 @@ class SDMotor: public Motor
   int32_t motor_ppr;
 
 public:
-
-  SDMotor(MotorDriver *connector, const char *motorName, MotorParameters *m_params)
+  SDMotor(MotorDriver *connector, const char *motorName, SDMotorParameters *m_params)
       : Motor(connector, motorName), // Call base class initializer
         velocity_limit(m_params->velocity_limit),
         accel_limit(m_params->accel_limit),
@@ -99,13 +98,14 @@ class MCMotor: public Motor
   double velocity_limit;
 
 public:
-
-  SDMotor(MotorDriver *connector, const char *motorName, MotorParameters *m_params)
+  MCMotor(MotorDriver *connector, const char *motorName, MCMotorParameters *m_params)
       : Motor(connector, motorName), // Call base class initializer
         velocity_limit(m_params->velocity_limit),
   {
     setMotorName(motorName);
   }
 
+  bool LimitTorque(double limit);
+  bool MoveAtVelocity(int32_t velocity);
 };
 #endif // __MOTOR_HPP__

@@ -50,8 +50,6 @@ public:
   {
     return motor_count;
   }
-  template <typename Func>
-  void multiMotorFunction(Motor **, Func);
   void disableMotors(void);
   void gatherMotorData(uint8_t *buffer, size_t buffer_size);
   bool motorsReady(bool negDirection = false);
