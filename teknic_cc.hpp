@@ -51,8 +51,8 @@ public:
     return motor_count;
   }
   void disableMotors(void);
-  void gatherMotorData(uint8_t *buffer, size_t buffer_size);
-  bool motorsReady(bool negDirection = false);
+  // void gatherMotorData(uint8_t *buffer, size_t buffer_size);
+  // bool motorsReady(bool negDirection = false);
   bool getOperationModeSwitch(void);
   bool motorsMoving(void);
 

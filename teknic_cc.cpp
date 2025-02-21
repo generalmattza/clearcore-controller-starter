@@ -85,25 +85,25 @@ void teknic_cc::stopMotors(void)
   }
 }
 
-bool teknic_cc::motorsReady(bool negDirection)
-{
-  // Check if motor all motors are ready
-  bool motor_ready[motor_count];
-  for (uint8_t i = 0; i < motor_count; i++)
-  {
-    motor_ready[i] = motors[i]->validateMove(negDirection);
-  }
-  // Check if all motors are ready
-  for (uint8_t i = 0; i < motor_count; i++)
-  {
-    if (!motor_ready[i])
-    {
-      return false; // Return false immediately if any motor is not ready
-    }
-  }
+// bool teknic_cc::motorsReady(bool negDirection)
+// {
+//   // Check if motor all motors are ready
+//   bool motor_ready[motor_count];
+//   for (uint8_t i = 0; i < motor_count; i++)
+//   {
+//     motor_ready[i] = motors[i]->validateMove(negDirection);
+//   }
+//   // Check if all motors are ready
+//   for (uint8_t i = 0; i < motor_count; i++)
+//   {
+//     if (!motor_ready[i])
+//     {
+//       return false; // Return false immediately if any motor is not ready
+//     }
+//   }
 
-  return true; // All motors are ready
-}
+//   return true; // All motors are ready
+// }
 
 void teknic_cc::disableMotors(void)
 {
@@ -113,35 +113,35 @@ void teknic_cc::disableMotors(void)
   }
 }
 
-void teknic_cc::gatherMotorData(uint8_t *buffer, size_t buffer_size)
-{
+// void teknic_cc::gatherMotorData(uint8_t *buffer, size_t buffer_size)
+// {
 
-  size_t required_size = motor_count * packet_size;
+//   size_t required_size = motor_count * packet_size;
 
-  if (buffer_size < required_size)
-  {
-    // Handle insufficient buffer case (e.g., return or throw an error)
-    return;
-  }
+//   if (buffer_size < required_size)
+//   {
+//     // Handle insufficient buffer case (e.g., return or throw an error)
+//     return;
+//   }
 
-  size_t offset = 0;
+//   size_t offset = 0;
 
-  for (uint8_t i = 0; i < motor_count; i++)
-  {
-    if (motors[i] != nullptr)
-    {
-      MotorData packet = {
-          motors[i]->getPositionCurrent(),
-          motors[i]->getVelocityCurrent(),
-          (int32_t)motors[i]->getTorqueCurrent(),
-          motors[i]->getStatus(),
-          motors[i]->getAlerts()};
+//   for (uint8_t i = 0; i < motor_count; i++)
+//   {
+//     if (motors[i] != nullptr)
+//     {
+//       MotorData packet = {
+//           motors[i]->getPositionCurrent(),
+//           motors[i]->getVelocityCurrent(),
+//           (int32_t)motors[i]->getTorqueCurrent(),
+//           motors[i]->getStatus(),
+//           motors[i]->getAlerts()};
 
-      memcpy(&buffer[offset], &packet, packet_size);
-      offset += packet_size;
-    }
-  }
-}
+//       memcpy(&buffer[offset], &packet, packet_size);
+//       offset += packet_size;
+//     }
+//   }
+// }
 
 bool teknic_cc::motorsMoving(void) {
   for (uint8_t i = 0; i < motor_count; i++)

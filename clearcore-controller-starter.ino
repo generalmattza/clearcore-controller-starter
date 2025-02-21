@@ -14,12 +14,8 @@
 // Flag to enable debug output
 #define DEBUG_OUTPUT false
 
-// // Define input pins for switches
-// #define operationModeSwitch ConnectorDI6
-// #define homingGuardSwitch ConnectorDI7
 #define motorEnableSwitch ConnectorA9
 #define dirSelectSwitch ConnectorDI8
-// #define warningHornOutput ConnectorIO4
 
 // Interval for data collection and transmission
 const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
@@ -35,13 +31,10 @@ const unsigned long reconnectInterval = 500;
 // Acceleration and deceleration limits are in PPS
 // velocity_limit, velocity_normal, velocity_fine, velocity_rapid, accel_limit, decel_limit, estop_decel_limit, motor_ppr
 
-MCMotorParameters motor_params;  // Default values for X-axis
-// MotorParametersY motor_params_y;  // Default values for Y-axis
-// MotorParametersZ motor_params_z;  // Default values for Z-axis
+MCMotorParameters motor_params;
 
 // Define Motor objects
 MCMotor motor0(&ConnectorM0, "M0", &motor_params);
-
 
 Motor *motors[] = { &motor0 };
 uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
@@ -237,6 +230,8 @@ void loop() {
   if (checkSerialConnection()) {
     // Publish data periodically, every DataCollectorUpdateInterval ms
     // publishSerialDataPeriodically();
+    Serial.print("Position: ");
+    Serial.println(motor0.getPositionCurrent());
   }
   // Manage the loop frequency by applying a delay if required
   manageLoopFrequency(start_time);
