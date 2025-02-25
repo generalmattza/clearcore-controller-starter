@@ -1,5 +1,5 @@
-#ifndef __MOTOR_HPP_
-#define __MOTOR_HPP_
+#ifndef __MOTOR_HPP__
+#define __MOTOR_HPP__
 
 #include "ClearCore.h"
 #include <Arduino.h>
@@ -348,9 +348,22 @@ public:
     virtual void incrementPosition(int32_t increment = 1) override;
 
     /**
+     * @brief Sets the motor's position reference.
+     * @param position The new position reference (default is 0).
+     */
+    void zeroPosition(int32_t position = 0);
+
+    /**
      * @brief Stops the MCMotor.
      */
     virtual void stopMotor(void) override;
+
+
+    /**
+     * @brief Retrieves the motor direction.
+     * @return int_8t The motor direction.
+     */
+    uint8_t getMotorDirection(void) const
 };
 
 #endif // __MOTOR_HPP_

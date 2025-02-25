@@ -225,6 +225,14 @@ void Motor::positionPulseCallback(void) {
     this->incrementPosition();
 }
 
+/**
+ * @brief Zeroes the motor's position.
+ * @param position The new position reference.
+ */
+void Motor::zeroPosition(int32_t position) {
+    this->position_current = position;
+}
+
 // -------------------- SDMotor Class Implementation --------------------
 
 /**
