@@ -3,6 +3,7 @@
 #include "ClearCore.h"
 // #include "machine_state.hpp"
 #include "motor_parameters.hpp"
+#include "axis.hpp"
 
 // defines the Serial port as the USB connector
 // Options are Serial (USB), Serial0 (COM-0), Serial1 (COM-1)
@@ -10,12 +11,15 @@
 // define BAUD rate for the UART command. Using 115200
 // as that's the maximum for the ClearCore
 #define SerialBaudRate 115200
+#define adcResolution 12
 
 // Flag to enable debug output
 #define DEBUG_OUTPUT false
 
-#define motorEnableSwitch ConnectorA9
-#define dirSelectSwitch ConnectorDI8
+// #define motorEnableSwitch ConnectorA9
+// #define dirSelectSwitch ConnectorDI8
+#define motorVelocityControlPin ConnectorA0
+#define motorTorqueControlPin ConnectorA1
 
 // Interval for data collection and transmission
 const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
@@ -27,10 +31,6 @@ const unsigned long reconnectInterval = 500;
 // Define Motor Parameters
 // ************************************************************************************************
 // Defaults are set in the MotorParameters constructor
-// Velocity limits are in RPM
-// Acceleration and deceleration limits are in PPS
-// velocity_limit, velocity_normal, velocity_fine, velocity_rapid, accel_limit, decel_limit, estop_decel_limit, motor_ppr
-
 MCMotorParameters motor_params;
 
 // Define Motor objects
@@ -41,6 +41,9 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 
 // Define Management Objects
 // ************************************************************************************************
+
+// Axis
+Axis axis(&motor0, 120.0, &motorTorqueControlPin, &motorVelocityControlPin);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort, &motorEnableSwitch);
@@ -126,6 +129,8 @@ void setup() {
 
   // Initialize the Serial port
   reconnectSerial();
+  // Set the resolution of the ADC.
+  analogReadResolution(adcResolution);
 
   // Initialize the motion controller
   clearcore.init();

@@ -442,6 +442,22 @@ int32_t MCMotor::getVelocityCurrent(void) const {
     return this->velocity_current;
 }
 
+uint8_t MCMotor::getMotorDirection(void) const
+{
+    static uint8_t last_direction = 1; // default direction (-1 for CW, 1 for CCW)
+
+    if (this->velocity_current > 0)
+    {
+        last_direction = 1;
+    }
+    else if (this->velocity_current < 0)
+    {
+        last_direction = -1;
+    }
+    // If velocity_current is 0, we simply return the last known direction.
+    return last_direction;
+}
+
 /**
  * @brief Retrieves the current commanded position.
  *
@@ -457,5 +473,6 @@ int32_t MCMotor::getPositionCurrent(void) const {
  * @param increment The amount by which to increment the position.
  */
 void MCMotor::incrementPosition(int32_t increment) {
-    this->position_current += increment;
+    int8_t direction = this->getMotorDirection();
+    this->position_current += direction * increment;
 }
