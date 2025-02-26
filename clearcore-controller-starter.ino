@@ -28,7 +28,7 @@
 // Interval for data collection and transmission
 const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
 // Desired loop interval (static const)
-const unsigned long interval_ms = 500;  // ~ 100Hz
+const unsigned long interval_ms = 0;  // ~ 100Hz
 // Delay before attempting to reconnect the serial port (ms)
 const unsigned long reconnectInterval = 500;
 

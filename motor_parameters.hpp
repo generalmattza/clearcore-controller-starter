@@ -91,7 +91,7 @@ public:
   double pwm_deadband;            // PWM deadband in percentage
   double torque_limit;            // Torque limit as a factor 0-1
 
-  MCMotorParameters(int32_t v_limit = 1500, double pwm_db = 0.02, double t_limit = 1.0)
+  MCMotorParameters(int32_t v_limit = 1500, double pwm_db = 0.03, double t_limit = 1.0)
     : velocity_limit(v_limit), pwm_deadband(pwm_db), torque_limit(t_limit) {
   }
 };
