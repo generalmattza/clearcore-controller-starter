@@ -4,35 +4,40 @@
 #include "ClearCore.h"
 #include "motor.hpp"
 
-#define adcResolution 12
 
 class Axis
 {
+private:
     MCMotor *motor;
-    float ratio;
-    AnalogIn *torque_limit_control_pin;
-    AnalogIn *velocity_limit_control_pin;
+    float drive_ratio;
     double position_current;
     double velocity_current;
+    double torque_current;
     double motor_direction_ref;
+    double velocity_limit;
+    double torque_limit;
 
 public:
-    Axis(MCMotor *motor, float ratio, AnalogIn *torque_limit_control_pin, AnalogIn *velocity_limit_control_pin, bool motor_direction_ref = true)
+    Axis(MCMotor *motor, float drive_ratio, double velocity_limit, double torque_limit = 1.0, bool motor_direction_ref = true)
     {
         this->motor = motor;
-        this->ratio = ratio;
-        this->torque_limit_control_pin = torque_limit_control_pin;
-        this->velocity_limit_control_pin = velocity_limit_control_pin;
+        this->drive_ratio = drive_ratio;
         this->motor_direction_ref = motor_direction_ref ? -1.0 : 1.0;
+        this->position_current = 0;
+        this->velocity_limit = velocity_limit;
+        this->torque_limit = torque_limit;
     }
 
-    void initAxis(void);
-    double readTorqueCommand(void);
-    double readVelocityCommand(void);
-    void limitMotorTorque(double torque_limit_command) const;
-    int32_t commandMotorVelocity(double velocity_command) const;
+    void init(void);
+    void limitMotorTorque(double torque_limit_command);
+    int32_t MoveAtVelocity(double velocity_command);
     void zeroPosition(void);
-    double readCurrentPosition(void) const;
-}
+    double readCurrentPosition(void);
+    double getMotorTorque(void);
+    double getMotorVelocity(void);
+    double getPositionCurrent(void);
+    double getVelocityCurrent(void);
+
+};
 
 #endif // __AXIS_HPP__

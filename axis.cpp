@@ -1,47 +1,57 @@
 
 #include "axis.hpp"
 
-void Axis::initAxis(void)
+void Axis::init(void)
 {
-    this->motor->initMotor();
+    motor->initMotor();
+    // analogReadResolution(adcResolution);
 
 }
 
-double Axis::readVelocityCommand(void) const
-{
-    int adc_result = analogRead(this->velocity_limit_control_pin);
-    double velocity_command = 1.0 * adc_result / ((1 << adcResolution) - 1);
-    return velocity_command;
-}
 
-double Axis::readTorqueCommand(void) const
+int32_t Axis::MoveAtVelocity(double velocity_command)
 {
-    int adc_result = analogRead(this->torque_limit_control_pin);
-    double torque_command = 1.0 * adc_result / ((1 << adcResolution) - 1);
-    return torque_command;
-}
-
-
-int32_t Axis::commandMotorVelocity(double velocity_command) const
-{
-    int32_t motor_velocity = velocity_command * this->ratio;
-    this->motor->MoveAtVelocity(motor_velocity);
+    velocity_current = velocity_command * velocity_limit;
+    int32_t motor_velocity = velocity_current * drive_ratio;
+    motor->MoveAtVelocity(motor_velocity);
     return motor_velocity;
 }
 
-void Axis::limitMotorTorque(double torque_limit_command) const
+void Axis::limitMotorTorque(double torque_limit_command)
 {
-    this->motor->LimitTorque(torque_limit_command);
+    double torque_command = torque_limit_command * torque_limit;
+    motor->LimitTorque(torque_command);
+    torque_current = torque_command;
 }
 
-double Axis::readCurrentPosition(void) const
+double Axis::readCurrentPosition(void)
 {
-    this->position_current = this->motor_direction_ref * this->motor->getPositionCurrent() / this->ratio;
-    return this->position_current;
+    position_current = motor_direction_ref * motor->getPositionCurrent() / drive_ratio;
+    return position_current;
 }
 
 void Axis::zeroPosition(void)
 {
-    this->motor->zeroPosition();
-    this->position_current = 0.0;
+    motor->zeroPosition();
+    position_current = 0.0;
+}
+
+double Axis::getMotorTorque(void)
+{
+    return torque_current;
+}
+// Return the current velocity of the motor in rpm
+double Axis::getMotorVelocity(void)
+{
+    return (double)motor->getVelocityCurrent();
+}
+
+double Axis::getPositionCurrent(void)
+{
+    return position_current;
+}
+
+double Axis::getVelocityCurrent(void)
+{
+    return velocity_current;
 }

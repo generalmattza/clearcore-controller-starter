@@ -3,6 +3,7 @@
 #include "ClearCore.h"
 // #include "machine_state.hpp"
 #include "motor_parameters.hpp"
+#include "controller.hpp"
 #include "axis.hpp"
 
 // defines the Serial port as the USB connector
@@ -11,20 +12,23 @@
 // define BAUD rate for the UART command. Using 115200
 // as that's the maximum for the ClearCore
 #define SerialBaudRate 115200
-#define adcResolution 12
 
 // Flag to enable debug output
 #define DEBUG_OUTPUT false
 
-// #define motorEnableSwitch ConnectorA9
 // #define dirSelectSwitch ConnectorDI8
-#define motorVelocityControlPin ConnectorA0
-#define motorTorqueControlPin ConnectorA1
+#define motorTorqueControlPin ConnectorA12
+#define motorVelocityControlPin ConnectorA11
+#define axisUpButtonPin ConnectorA10
+#define axisDownButtonPin ConnectorA9
+#define clearFaultsButtonPin ConnectorDI8
+#define zeroAxisButtonPin ConnectorDI7
+#define motorEnableSwitch ConnectorDI6
 
 // Interval for data collection and transmission
 const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
 // Desired loop interval (static const)
-const unsigned long interval_ms = 0;  // ~ 100Hz
+const unsigned long interval_ms = 500;  // ~ 100Hz
 // Delay before attempting to reconnect the serial port (ms)
 const unsigned long reconnectInterval = 500;
 
@@ -34,7 +38,7 @@ const unsigned long reconnectInterval = 500;
 MCMotorParameters motor_params;
 
 // Define Motor objects
-MCMotor motor0(&ConnectorM0, "M0", &motor_params);
+MCMotor motor0(&ConnectorM1, "M1", &motor_params);
 
 Motor *motors[] = { &motor0 };
 uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
@@ -42,8 +46,12 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 // Define Management Objects
 // ************************************************************************************************
 
+// Controller
+Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin);
+
 // Axis
-Axis axis(&motor0, 120.0, &motorTorqueControlPin, &motorVelocityControlPin);
+// Motor instance, drive_ratio, axis_velocity_limit (RPM), torque_limit (0-1)
+Axis axis(&motor0, 120.0, 12.0, 0.8);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort, &motorEnableSwitch);
@@ -68,8 +76,8 @@ unsigned long lastReconnectAttempt = 0;
  */
 bool reconnectSerial(void) {
   // Attempt to reinitialize the Serial connection
-  Serial.end();  // Ensure Serial is properly closed
-  delay(1000);   // Small delay to ensure proper reset
+  // Serial.end();  // Ensure Serial is properly closed
+  // delay(1000);   // Small delay to ensure proper reset
   Serial.begin(SerialBaudRate);
 
   // Wait for Serial to reconnect
@@ -129,18 +137,24 @@ void setup() {
 
   // Initialize the Serial port
   reconnectSerial();
-  // Set the resolution of the ADC.
-  analogReadResolution(adcResolution);
+  // Serial.begin(SerialBaudRate);
+
+
+  // Initialize the axis
+  axis.init();
 
   // Initialize the motion controller
   clearcore.init();
 
+  // Initialize the controller
+  controller.init();
+
   // Setup limit switches
-  motor0.setLimitSwitchNegative(DI6);
-  motor0.setLimitSwitchPositive(DI7);
+  // motor0.setLimitSwitchNegative(DI6);
+  // motor0.setLimitSwitchPositive(DI7);
   // motor1.setLimitSwitchNegative(IO2);
   // motor1.setLimitSwitchPositive(IO3);
-  dirSelectSwitch.Mode(Connector::INPUT_DIGITAL);
+  // dirSelectSwitch.Mode(Connector::INPUT_DIGITAL);
 
   // Z-axis limit switches are not currently used
   // motor2.setLimitSwitchPositive(IO4);
@@ -192,58 +206,83 @@ void loop() {
     ****************************************
     *
     * LOGIC
+    * Read the controller inputs
+    * IF the axis up button is pressed
+    * THEN move the axis up
+    * IF the axis down button is pressed
+    * THEN move the axis down
+    * IF the zero axis button is pressed
+    * THEN zero the axis
+    **/ 
 
-    **/
+    double velocity_command = controller.readVelocityCommand();
+    double torque_limit = controller.readTorqueCommand();
+    bool axis_up_button_state = controller.readAxisUpButton();
+    bool axis_down_button_state = controller.readAxisDownButton();
 
-    // START OF GUARDED ROUTINE
-    bool motor_direction = dirSelectSwitch.State();
-    if (true) {
-      int32_t velocity;
-      if (motor_direction) {
-        velocity = 1000;
-      } else {
-        velocity = -1000;
-      }
-      motor0.MoveAtVelocity(velocity);
+    Serial.print("velocity_command: ");
+    Serial.println(velocity_command);
+    Serial.print("torque_limit: ");
+    Serial.println(torque_limit);
+
+    // Limit motor torque to the value read from the dial
+    axis.limitMotorTorque(torque_limit);
+    int32_t motor_speed;
+
+    if (axis_up_button_state) {
+      Serial.println("Moving UP");
+      motor_speed = axis.MoveAtVelocity(velocity_command);
+    } else if (axis_down_button_state) {
+      Serial.println("Moving DOWN");
+      motor_speed = axis.MoveAtVelocity(-velocity_command);
+    } else {
+      Serial.println("Not Moving");
+      motor_speed = axis.MoveAtVelocity(0);
     }
+
+    Serial.print("Motor_speed: ");
+    Serial.println(motor_speed);
+
+    
 
     // END OF GUARDED ROUTINE
-
+  }
     /** NON-GUARDED ROUTINE
     ****************************************
-
     * LOGIC
-
     **/
 
+
     // START OF NON-GUARDED ROUTINE
-    if (true) {
-      // SerialPort.println("Clearing motors");
+    // IF the clear faults button is pressed
+    // THEN clear all faults
+    if (controller.readClearFaultsButton()) {
+      SerialPort.println("Clearing faults ...");
       clearcore.clearFaults();
     }
-    // END OF NON-GUARDED ROUTINE
-  }
-
-  /** PERSISTENT ROUTINE
-   ****************************************
-   * This routine will run always, regardless of the state of the controller or Deadman switch
-   **/
-
-  // START OF PERSISTENT ROUTINE
+    if (controller.readZeroAxisButton()) {
+      axis.zeroPosition();
+    }
 
   // Check if Serial is connected
   if (checkSerialConnection()) {
     // Publish data periodically, every DataCollectorUpdateInterval ms
     // publishSerialDataPeriodically();
     Serial.print("Position: ");
-    Serial.println(motor0.getPositionCurrent());
+    Serial.println(axis.getPositionCurrent());
+    Serial.print("Axis Velocity: ");
+    Serial.println(axis.getVelocityCurrent());
+    Serial.print("Motor Speed: ");
+    Serial.println(axis.getMotorVelocity());
+    Serial.print("Torque: ");
+    Serial.println(axis.getMotorTorque());
   }
   // Manage the loop frequency by applying a delay if required
   manageLoopFrequency(start_time);
   // Pet watchdog to prevent system reset.
   clearcore.resetWatchdog();
 
-  // END OF PERSISTENT ROUTINE
+  // END OF NON-GUARDED ROUTINE
 }
 
 // /**

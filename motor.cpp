@@ -225,13 +225,7 @@ void Motor::positionPulseCallback(void) {
     this->incrementPosition();
 }
 
-/**
- * @brief Zeroes the motor's position.
- * @param position The new position reference.
- */
-void Motor::zeroPosition(int32_t position) {
-    this->position_current = position;
-}
+
 
 // -------------------- SDMotor Class Implementation --------------------
 
@@ -405,19 +399,20 @@ bool MCMotor::MoveAtVelocity(int32_t velocity) {
     }
 
     // Calculate PWM duty cycle scaling
-    double range_unsigned = 127.5 - (this->pwm_deadband / 100 * 255);
+    double range_unsigned = 127.5 - (this->pwm_deadband * 255);
     double scale_factor = range_unsigned / this->velocity_limit;
     double duty_request;
 
     if (velocity < 0) {
-        duty_request = 127.5 - (this->pwm_deadband / 100 * 255) + (velocity * scale_factor);
+        duty_request = 127.5 - (this->pwm_deadband * 255) + (velocity * scale_factor);
     } else if (velocity > 0) {
-        duty_request = 127.5 + (this->pwm_deadband / 100 * 255) + (velocity * scale_factor);
+        duty_request = 127.5 + (this->pwm_deadband * 255) + (velocity * scale_factor);
     } else {
         duty_request = 128.0;
     }
 
     connector->MotorInBDuty(duty_request);
+
     this->velocity_current = velocity;
     return true;
 }
@@ -427,7 +422,7 @@ bool MCMotor::MoveAtVelocity(int32_t velocity) {
  *
  * Scales the torque limit command to a PWM duty cycle and sends it.
  *
- * @param limit The torque limit percentage.
+ * @param limit The torque limit percentage as a factor 0-1.
  * @return true if the command was accepted; false otherwise.
  */
 bool MCMotor::LimitTorque(double limit) {
@@ -435,9 +430,11 @@ bool MCMotor::LimitTorque(double limit) {
         printMessage("Torque limiting rejected, invalid torque requested.");
         return false;
     }
-    double scale_factor = 255 / (this->torque_limit);
-    uint8_t duty_request = (this->torque_limit - limit) * scale_factor;
+    double scale_factor = 255.0 / torque_limit;
+    uint8_t duty_request = (torque_limit - limit) * scale_factor;
     connector->MotorInADuty(duty_request);
+    Serial.print("Duty request: ");
+    Serial.println(duty_request);
     return true;
 }
 
@@ -483,4 +480,12 @@ int32_t MCMotor::getPositionCurrent(void) const {
 void MCMotor::incrementPosition(int32_t increment) {
     int8_t direction = this->getMotorDirection();
     this->position_current += direction * increment;
+}
+
+/**
+ * @brief Zeroes the motor's position.
+ * @param position The new position reference.
+ */
+void MCMotor::zeroPosition(int32_t position) {
+    this->position_current = position;
 }

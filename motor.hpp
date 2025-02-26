@@ -363,7 +363,7 @@ public:
      * @brief Retrieves the motor direction.
      * @return int_8t The motor direction.
      */
-    uint8_t getMotorDirection(void) const
+    uint8_t getMotorDirection(void) const;
 };
 
 #endif // __MOTOR_HPP_
