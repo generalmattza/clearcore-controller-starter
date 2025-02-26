@@ -89,10 +89,11 @@ class MCMotorParameters {
 public:
   int32_t velocity_limit;          // Velocity limit in RPM
   double pwm_deadband;            // PWM deadband in percentage
-  double torque_limit;            // Torque limit as a factor 0-1
+  double torque_limit_max;            // Torque limit as a factor 0-1
+  double torque_limit_min;            // Torque limit as a factor 0-1
 
-  MCMotorParameters(int32_t v_limit = 1500, double pwm_db = 0.03, double t_limit = 1.0)
-    : velocity_limit(v_limit), pwm_deadband(pwm_db), torque_limit(t_limit) {
+  MCMotorParameters(int32_t v_limit = 1500, double pwm_db = 0.03, double t_limit_max = 1.0, double t_limit_min = 0.0)
+    : velocity_limit(v_limit), pwm_deadband(pwm_db), torque_limit_max(t_limit_max), torque_limit_min(t_limit_min) {}
   }
 };
 #endif  // __MOTOR_PARAMETERS_HPP__

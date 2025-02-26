@@ -287,11 +287,13 @@ public:
  */
 class MCMotor : public Motor {
 protected:
-    int32_t velocity_limit;   ///< Maximum velocity limit for MC motors
-    int32_t position_current; ///< Current position command
-    double velocity_current;  ///< Current velocity command (as double)
-    double torque_limit;      ///< Maximum torque limit
-    double pwm_deadband;      ///< PWM deadband value
+    int32_t velocity_limit;   // Maximum velocity limit for MC motors
+    int32_t position_current; // Current position command
+    double velocity_current;  // Current velocity command (as double)
+    double torque_limit_max;      // maximum torque limit
+    double torque_limit_min;      // Minimum torque limit
+    double torque_limit_current;  // Current torque limit
+    double pwm_deadband;      // PWM deadband value
     DigitalIn position_pulse_pin = ConnectorDI6; ///< Digital input for position pulse
 
 public:
@@ -304,7 +306,8 @@ public:
     MCMotor(MotorDriver *connector, const char *motorName, MCMotorParameters *m_params)
         : Motor(connector, motorName),
           velocity_limit(m_params->velocity_limit),
-          torque_limit(m_params->torque_limit),
+          torque_limit_max(m_params->torque_limit_max),
+          torque_limit_min(m_params->torque_limit_min),
           pwm_deadband(m_params->pwm_deadband)
     {
         setMotorName(motorName);

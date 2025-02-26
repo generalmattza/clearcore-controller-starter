@@ -421,20 +421,20 @@ bool MCMotor::MoveAtVelocity(int32_t velocity) {
  * @brief Commands the motor to limit the applied torque.
  *
  * Scales the torque limit command to a PWM duty cycle and sends it.
+ * 
  *
  * @param limit The torque limit percentage as a factor 0-1.
  * @return true if the command was accepted; false otherwise.
  */
 bool MCMotor::LimitTorque(double limit) {
-    if (limit > this->torque_limit) {
+    if (limit > torque_limit_max) or (limit < torque_limit_min) {
         printMessage("Torque limiting rejected, invalid torque requested.");
         return false;
     }
-    double scale_factor = 255.0 / torque_limit;
-    uint8_t duty_request = (torque_limit - limit) * scale_factor;
+    double scale_factor = 255.0 / (torque_limit_max - torque_limit_min);
+    uint8_t duty_request = (torque_limit_max - limit) * scale_factor;
     connector->MotorInADuty(duty_request);
-    Serial.print("Duty request: ");
-    Serial.println(duty_request);
+    torque_limit_current = limit;
     return true;
 }
 
