@@ -50,8 +50,8 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin);
 
 // Axis
-// Motor instance, drive_ratio, axis_velocity_limit (RPM), torque_limit (0-1)
-Axis axis(&motor0, 120.0, 12.0, 0.8);
+// Motor instance, drive_ratio, axis_velocity_limit (RPM), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
+Axis axis(&motor0, 120.0, 12.0, 0.8, 0.05);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort, &motorEnableSwitch);
@@ -220,10 +220,6 @@ void loop() {
     bool axis_up_button_state = controller.readAxisUpButton();
     bool axis_down_button_state = controller.readAxisDownButton();
 
-    Serial.print("velocity_command: ");
-    Serial.println(velocity_command);
-    Serial.print("torque_limit: ");
-    Serial.println(torque_limit);
 
     // Limit motor torque to the value read from the dial
     axis.limitMotorTorque(torque_limit);
@@ -239,11 +235,6 @@ void loop() {
       Serial.println("Not Moving");
       motor_speed = axis.MoveAtVelocity(0);
     }
-
-    Serial.print("Motor_speed: ");
-    Serial.println(motor_speed);
-
-    
 
     // END OF GUARDED ROUTINE
   }
