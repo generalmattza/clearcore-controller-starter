@@ -53,6 +53,7 @@ void Motor::initMotor(void) {
     connector->HlfbMode(MotorDriver::HLFB_MODE_HAS_BIPOLAR_PWM);
     // Set the HLFB carrier frequency to 482 Hz
     connector->HlfbCarrier(MotorDriver::HLFB_CARRIER_482_HZ);
+
 }
 
 /**
@@ -365,15 +366,12 @@ bool SDMotor::MoveAtVelocity(int32_t velocity) {
 void MCMotor::initMotor(void) {
     Motor::initMotor();
 
-    #define POSITION_PULSE_PIN DI6
-    pinMode(POSITION_PULSE_PIN, INPUT);
-
-    interrupts();
+    position_pulse_pin.Mode(Connector::INPUT_DIGITAL);
 
     // Set the global instance pointer for the interrupt callback
     gMotorInstance = this;
-    attachInterrupt(digitalPinToInterrupt(POSITION_PULSE_PIN), positionPulseCallbackWrapper, FALLING);
-
+    position_pulse_pin.InterruptHandlerSet(positionPulseCallbackWrapper, InputManager::FALLING, false);
+    position_pulse_pin.InterruptEnable(true);
     Motor::postInitMotor();
 }
 
