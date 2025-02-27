@@ -26,7 +26,7 @@
 #define motorEnableSwitch ConnectorDI6
 
 // Interval for data collection and transmission
-const unsigned long data_collector_iterval_ms = 50;  // ~20Hz
+const unsigned long serial_update_interval_ms = 100;  // ~20Hz
 // Desired loop interval (static const)
 const unsigned long interval_ms = 0;  // ~ 100Hz
 // Delay before attempting to reconnect the serial port (ms)
@@ -82,7 +82,7 @@ bool reconnectSerial(void) {
 
   // Wait for Serial to reconnect
   unsigned long start_time = millis();
-  while (!Serial && (millis() - start_time < 5000)) {
+  while (!Serial && (millis() - start_time < 2000)) {
     continue;  // Wait up to 5 seconds
   }
 
@@ -255,21 +255,21 @@ void loop() {
       axis.zeroPosition();
     }
 
-  // Check if Serial is connected
-  if (checkSerialConnection()) {
+  // Update the serial port every serial_update_interval_ms
+  if ((millis() - start_time) < serial_update_interval_ms) {
     // Publish data periodically, every DataCollectorUpdateInterval ms
     // publishSerialDataPeriodically();
-    Serial.print("Position: ");
-    Serial.println(axis.getPositionCurrent());
-    Serial.print("Axis Velocity: ");
-    Serial.println(axis.getVelocityCurrent());
-    Serial.print("Motor Speed: ");
-    Serial.println(axis.getMotorVelocity());
-    Serial.print("Torque: ");
+    Serial.print("Axis Position: ");
+    Serial.print(axis.getPositionCurrent());
+    Serial.print("\tAxis Velocity: ");
+    Serial.print(axis.getVelocityCurrent());
+    Serial.print("\tMotor Speed: ");
+    Serial.print(axis.getMotorVelocity());
+    Serial.print("\tMotor Torque: ");
     Serial.println(axis.getMotorTorque());
   }
   // Manage the loop frequency by applying a delay if required
-  manageLoopFrequency(start_time);
+  // manageLoopFrequency(start_time);
   // Pet watchdog to prevent system reset.
   clearcore.resetWatchdog();
 

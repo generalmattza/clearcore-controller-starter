@@ -76,7 +76,7 @@ void Axis::zeroPosition(void)
  */
 double Axis::getMotorTorque(void)
 {
-    return torque_current;
+    return round(motor->getHlfbPercent(),0);
 }
 
 /**

@@ -294,7 +294,7 @@ protected:
     double torque_limit_min;      // Minimum torque limit
     double torque_limit_current;  // Current torque limit
     double pwm_deadband;      // PWM deadband value
-    DigitalIn position_pulse_pin = ConnectorDI6; ///< Digital input for position pulse
+    DigitalIn position_pulse_pin = ConnectorIO5; ///< Digital input for position pulse
 
 public:
     /**
