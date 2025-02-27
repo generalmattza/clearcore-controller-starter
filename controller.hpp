@@ -7,13 +7,13 @@
 
 class Controller
 {
-
     DigitalInAnalogIn *torque_limit_dial_pin;
     DigitalInAnalogIn *velocity_limit_dial_pin;
     DigitalInAnalogIn *axis_up_button_pin;
     DigitalInAnalogIn *axis_down_button_pin;
     DigitalIn *clear_faults_button_pin;
     DigitalIn *zero_axis_button_pin;
+    DigitalIn *e_stop_switch_pin;
 
 public:
     Controller(
@@ -22,7 +22,8 @@ public:
         DigitalInAnalogIn *axis_up_button_pin,
         DigitalInAnalogIn *axis_down_button_pin,
         DigitalIn *clear_faults_button_pin,
-        DigitalIn *zero_axis_button_pin
+        DigitalIn *zero_axis_button_pin,
+        DigitalIn *e_stop_switch_pin
     )
     {
         this->torque_limit_dial_pin = torque_limit_dial_pin;
@@ -31,6 +32,7 @@ public:
         this->axis_down_button_pin = axis_down_button_pin;
         this->clear_faults_button_pin = clear_faults_button_pin;
         this->zero_axis_button_pin = zero_axis_button_pin;
+        this->e_stop_switch_pin = e_stop_switch_pin;
     }
     void init(void);
     double readTorqueCommand(void);
@@ -39,6 +41,7 @@ public:
     bool readAxisDownButton(void);
     bool readClearFaultsButton(void);
     bool readZeroAxisButton(void);
+    bool readEstopSwitch(void);
 };
 
 #endif // __CONTROLLER_HPP__

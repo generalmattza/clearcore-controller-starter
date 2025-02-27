@@ -25,6 +25,7 @@ void Controller::init(void)
     this->axis_down_button_pin->Mode(Connector::INPUT_DIGITAL);
     this->clear_faults_button_pin->Mode(Connector::INPUT_DIGITAL);
     this->zero_axis_button_pin->Mode(Connector::INPUT_DIGITAL);
+    this->e_stop_switch_pin->Mode(Connector::INPUT_DIGITAL);
 }
 
 bool Controller::readAxisUpButton(void)
@@ -45,4 +46,9 @@ bool Controller::readClearFaultsButton(void)
 bool Controller::readZeroAxisButton(void)
 {
     return this->zero_axis_button_pin->State();
+}
+
+bool Controller::readEstopSwitch(void)
+{
+  return this->e_stop_switch_pin->State();
 }
