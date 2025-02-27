@@ -23,7 +23,7 @@
 #define axisDownButtonPin ConnectorA9
 #define clearFaultsButtonPin ConnectorDI8
 #define zeroAxisButtonPin ConnectorDI7
-#define motorEnableSwitch ConnectorDI6
+#define estopSwitchPin ConnectorDI6
 
 // Interval for data collection and transmission
 const unsigned long serial_update_interval_ms = 100;  // ~20Hz
@@ -38,7 +38,7 @@ const unsigned long reconnectInterval = 500;
 MCMotorParameters motor_params;
 
 // Define Motor objects
-MCMotor motor0(&ConnectorM1, "M1", &motor_params);
+MCMotor motor0(&ConnectorM0, "M0", &motor_params);
 
 Motor *motors[] = { &motor0 };
 uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
@@ -47,14 +47,14 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 // ************************************************************************************************
 
 // Controller
-Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin);
+Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin, &estopSwitchPin);
 
 // Axis
 // Motor instance, drive_ratio, axis_velocity_limit (RPM), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
 Axis axis(&motor0, 120.0, 12.0, 0.8, 0.05);
 
 // ClearCore - Motion controller Interface
-teknic_cc clearcore(motors, motor_count, &SerialPort, &motorEnableSwitch);
+teknic_cc clearcore(motors, motor_count, &SerialPort);
 
 // Manager for machine state
 // MachineState machine_state(&controller, &clearcore);

@@ -427,7 +427,7 @@ bool MCMotor::MoveAtVelocity(int32_t velocity) {
  * @return true if the command was accepted; false otherwise.
  */
 bool MCMotor::LimitTorque(double limit) {
-    if (limit > torque_limit_max) or (limit < torque_limit_min) {
+    if ((limit > torque_limit_max) || (limit < torque_limit_min)) {
         printMessage("Torque limiting rejected, invalid torque requested.");
         return false;
     }

@@ -94,6 +94,5 @@ public:
 
   MCMotorParameters(int32_t v_limit = 1500, double pwm_db = 0.03, double t_limit_max = 1.0, double t_limit_min = 0.0)
     : velocity_limit(v_limit), pwm_deadband(pwm_db), torque_limit_max(t_limit_max), torque_limit_min(t_limit_min) {}
-  }
 };
 #endif  // __MOTOR_PARAMETERS_HPP__

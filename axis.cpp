@@ -38,8 +38,7 @@ int32_t Axis::MoveAtVelocity(double velocity_command)
  */
 void Axis::limitMotorTorque(double torque_limit_command)
 {
-    double factor = torque_limit_max / (torque_limit_max - torque_limit_min);
-    double torque_command = (torque_limit_max - torque_limit_command) * scale_factor;
+    double torque_command = torque_limit_min + (torque_limit_command * (torque_limit_max - torque_limit_min));
     motor->LimitTorque(torque_command);
     torque_current = torque_command;
 }
