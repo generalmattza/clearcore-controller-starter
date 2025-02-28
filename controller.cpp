@@ -40,15 +40,17 @@ bool Controller::readAxisDownButton(void)
 
 bool Controller::readClearFaultsButton(void)
 {
-    return this->clear_faults_button_pin->State();
+    // return this->clear_faults_button_pin->State();
+    return this->clear_faults_button_pin->InputFallen();
 }
 
 bool Controller::readZeroAxisButton(void)
 {
-    return this->zero_axis_button_pin->State();
+    // return this->zero_axis_button_pin->State();
+    return this->zero_axis_button_pin->InputFallen();
 }
 
 bool Controller::readEstopSwitch(void)
 {
-  return this->e_stop_switch_pin->State();
+  return !this->e_stop_switch_pin->State();
 }

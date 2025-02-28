@@ -23,7 +23,7 @@ void Axis::init(void)
 int32_t Axis::MoveAtVelocity(double velocity_command)
 {
     velocity_current = velocity_command * velocity_limit;
-    int32_t motor_velocity = velocity_current * drive_ratio;
+    int32_t motor_velocity = velocity_current / leadscrew_ratio * gearbox_ratio;
     motor->MoveAtVelocity(motor_velocity);
     return motor_velocity;
 }
@@ -53,7 +53,7 @@ void Axis::limitMotorTorque(double torque_limit_command)
  */
 double Axis::readCurrentPosition(void)
 {
-    position_current = motor_direction_ref * motor->getPositionCurrent() / drive_ratio;
+    position_current = motor_direction_ref * (double)motor->getPositionCurrent() / 8 / gearbox_ratio * leadscrew_ratio;
     return position_current;
 }
 
@@ -73,9 +73,9 @@ void Axis::zeroPosition(void)
  *
  * @return double The current torque measured from the motor.
  */
-double Axis::getMotorTorque(void)
+float Axis::getMotorTorque(void)
 {
-    return round(motor->getHlfbPercent(),0);
+    return (float)motor->getHlfbPercent();
 }
 
 /**
@@ -106,4 +106,15 @@ double Axis::getPositionCurrent(void)
 double Axis::getVelocityCurrent(void)
 {
     return velocity_current;
+}
+
+
+int32_t Axis::getAlerts(void) const
+{
+  return motor->getAlerts();
+}
+
+const char* Axis::getStatusName(void) const
+{
+  return motor->getStatusName();
 }

@@ -15,7 +15,7 @@ void teknic_cc::init(void)
     motors[i]->initMotor();
   }
 
-  enableWatchdog();
+  // enableWatchdog();
 
   clearFaults();
 

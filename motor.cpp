@@ -12,6 +12,13 @@
 // Global pointer for instance access in the interrupt callback (assumes a single instance)
 static Motor* gMotorInstance = nullptr;
 
+const char* MotorReadyStateNames[] = {
+    "MOTOR_DISABLED",
+    "MOTOR_ENABLING",
+    "MOTOR_FAULTED",
+    "MOTOR_READY",
+    "MOTOR_MOVING"
+};
 /**
  * @brief Static wrapper for the position pulse callback.
  *
@@ -67,8 +74,7 @@ void Motor::postInitMotor(void) const {
     connector->EnableRequest(true);
 
     // Wait until homing is complete or an alert is present
-    while ((!connector->StepsComplete() || connector->HlfbState() != MotorDriver::HLFB_ASSERTED) &&
-           !connector->StatusReg().bit.AlertsPresent) {
+    while ((connector->HlfbState() != MotorDriver::HLFB_ASSERTED) && !connector->StatusReg().bit.AlertsPresent) {
         continue;
     }
 
@@ -161,6 +167,18 @@ int32_t Motor::getStatus(void) const {
 }
 
 /**
+ * @brief Retrieves the motor's status.
+ *
+ * @return int32_t The ready state from the motor's status register.
+ */
+const char* Motor::getStatusName(void) {
+  return getMotorReadyStateName(connector->StatusReg().bit.ReadyState);
+}
+
+
+
+
+/**
  * @brief Disables the motor by stopping it and disabling the enable request.
  */
 void Motor::disableMotor(void) {
@@ -210,9 +228,16 @@ bool Motor::setLimitSwitchNegative(ClearCorePins pin) {
  * @return int8_t The HLFB percentage, or 0 if unavailable.
  */
 int8_t Motor::getHlfbPercent(void) const {
+    int8_t motor_torque;
     MotorDriver::HlfbStates hlfbState = connector->HlfbState();
+    
     if (hlfbState == MotorDriver::HLFB_HAS_MEASUREMENT) {
-        return int(round(connector->HlfbPercent()));
+        motor_torque = int8_t(round(connector->HlfbPercent()) - 2.5);
+        
+        // Ensure valid range for both negative and positive values (-100 to +100)
+        if (motor_torque >= -100 && motor_torque <= 100) {
+            return motor_torque;
+        }
     }
     return 0;
 }
@@ -226,6 +251,14 @@ void Motor::positionPulseCallback(void) {
     this->incrementPosition();
 }
 
+
+// Function to get the enum name as a string
+const char* Motor::getMotorReadyStateName(MotorDriver::MotorReadyStates state) {
+    if (state >= MotorDriver::MotorReadyStates::MOTOR_DISABLED && state <= MotorDriver::MotorReadyStates::MOTOR_MOVING) {
+        return MotorReadyStateNames[state];
+    }
+    return "UNKNOWN_STATE";
+}
 
 
 // -------------------- SDMotor Class Implementation --------------------
@@ -366,12 +399,11 @@ bool SDMotor::MoveAtVelocity(int32_t velocity) {
 void MCMotor::initMotor(void) {
     Motor::initMotor();
 
-    position_pulse_pin.Mode(Connector::INPUT_DIGITAL);
+    position_pulse_pin->Mode(Connector::INPUT_DIGITAL);
 
     // Set the global instance pointer for the interrupt callback
     gMotorInstance = this;
-    position_pulse_pin.InterruptHandlerSet(positionPulseCallbackWrapper, InputManager::FALLING, false);
-    position_pulse_pin.InterruptEnable(true);
+    position_pulse_pin->InterruptHandlerSet(positionPulseCallbackWrapper, InputManager::RISING, true);
     Motor::postInitMotor();
 }
 

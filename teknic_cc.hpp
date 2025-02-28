@@ -34,11 +34,9 @@ private:
   uint8_t motor_count;
   const size_t packet_size = sizeof(MotorData);
   HardwareSerial *serial;
-  size_t switch_filter_count = 5;
 
 public:
   teknic_cc(Motor **motors, uint8_t count, HardwareSerial *serial) : motors(motors), motor_count(count), serial(serial) {}
-  // teknic_cc(Motor **motors, uint8_t count, HardwareSerial *serial, DigitalIn *motor_enable_switch_, DigitalIn *homing_guard_switch_, DigitalIn *operation_mode_switch_) : motors(motors), motor_count(count), serial(serial), motor_enable_switch(motor_enable_switch_), homing_guard_switch(homing_guard_switch_), operation_mode_switch(operation_mode_switch_) {}
   void init(void);
   void enableWatchdog(void);
   void resetWatchdog(void);

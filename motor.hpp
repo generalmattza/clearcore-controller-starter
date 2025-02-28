@@ -2,10 +2,12 @@
 #define __MOTOR_HPP__
 
 #include "ClearCore.h"
+// #include "MotorDriver.h"
 #include <Arduino.h>
 #include "motor_parameters.hpp"
 
 #define HANDLE_ALERTS true
+
 
 /**
  * @brief Base class for managing motor operations.
@@ -68,6 +70,12 @@ public:
      * @return int32_t Motor status from the status register.
      */
     int32_t getStatus(void) const;
+
+    /**
+     * @brief Retrieves the motor's status as a char.
+     * @return const char* Motor status from the status register.
+     */
+    const char* getStatusName(void);
 
     /**
      * @brief Handles any motor alerts.
@@ -147,6 +155,9 @@ public:
     const char *getMotorName(void) const {
         return motorName;
     }
+
+    // Function to get the enum name as a string
+    const char* getMotorReadyStateName(MotorDriver::MotorReadyStates state);
 };
 
 /**
@@ -294,7 +305,7 @@ protected:
     double torque_limit_min;      // Minimum torque limit
     double torque_limit_current;  // Current torque limit
     double pwm_deadband;      // PWM deadband value
-    DigitalIn position_pulse_pin = ConnectorIO5; ///< Digital input for position pulse
+    DigitalIn *position_pulse_pin = &ConnectorDI6; ///< Digital input for position pulse
 
 public:
     /**

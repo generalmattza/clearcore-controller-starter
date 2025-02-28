@@ -16,21 +16,18 @@
 // Flag to enable debug output
 #define DEBUG_OUTPUT false
 
-// #define dirSelectSwitch ConnectorDI8
 #define motorTorqueControlPin ConnectorA12
 #define motorVelocityControlPin ConnectorA11
 #define axisUpButtonPin ConnectorA10
 #define axisDownButtonPin ConnectorA9
 #define clearFaultsButtonPin ConnectorDI8
 #define zeroAxisButtonPin ConnectorDI7
-#define estopSwitchPin ConnectorDI6
+#define estopSwitchPin ConnectorIO0
 
 // Interval for data collection and transmission
-const unsigned long serial_update_interval_ms = 100;  // ~20Hz
-// Desired loop interval (static const)
-const unsigned long interval_ms = 0;  // ~ 100Hz
-// Delay before attempting to reconnect the serial port (ms)
-const unsigned long reconnectInterval = 500;
+const unsigned long serial_update_interval_ms = 250;  // ~10Hz
+// // Desired loop interval (static const)
+// const unsigned long interval_ms = 0;  // ~ 100Hz
 
 // Define Motor Parameters
 // ************************************************************************************************
@@ -50,8 +47,8 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin, &estopSwitchPin);
 
 // Axis
-// Motor instance, drive_ratio, axis_velocity_limit (RPM), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
-Axis axis(&motor0, 120.0, 12.0, 0.8, 0.05);
+// Motor instance, gearbox_ratio, leadscrew_ratio, axis_velocity_limit (mm/min), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
+Axis axis(&motor0, 120.0, 8.0, 96.0, 0.8, 0.05, true);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort);
@@ -62,83 +59,39 @@ teknic_cc clearcore(motors, motor_count, &SerialPort);
 // Initialization
 // ************************************************************************************************
 
-bool serialReconnecting = false;
-unsigned long lastReconnectAttempt = 0;
-
 /**
- * @brief Reconnects the Serial port if it is disconnected
+ * @brief Connects the Serial port
  * 
- * This function is used to attempt to reconnect the Serial port if it is disconnected.
- * It will close the Serial port, wait for a small delay, and then attempt to reopen the Serial port.
- * If the Serial port is not reconnected within 5 seconds, it will retry the reconnection.
+ * This function is used to attempt to connect the Serial port.
+ * If the Serial port is not connected within 5 seconds, it will return false.
  * 
- * @return bool Returns true if the Serial port is reconnected, false otherwise.
+ * @return bool Returns true if the Serial port is connected, false otherwise.
  */
-bool reconnectSerial(void) {
+bool connectSerial(void) {
   // Attempt to reinitialize the Serial connection
-  // Serial.end();  // Ensure Serial is properly closed
-  // delay(1000);   // Small delay to ensure proper reset
+  delay(1000);  // Small delay to ensure proper reset
   Serial.begin(SerialBaudRate);
 
   // Wait for Serial to reconnect
   unsigned long start_time = millis();
-  while (!Serial && (millis() - start_time < 2000)) {
+  while (!Serial && (millis() - start_time < 3000)) {
     continue;  // Wait up to 5 seconds
   }
 
   if (Serial) {
-    Serial.println("Serial port disconnected, but was reconnected successfully.");
+    Serial.println("Serial port connected successfully.");
   } else {
-    Serial.println("Serial port disconnected. Failed to reconnect Serial. Retrying...");
+    // Serial.println("Serial port disconnected. Failed to reconnect Serial. Retrying...");
   }
 
   return (bool)Serial;
 }
-/**
- * @brief Checks the Serial connection and attempts to reconnect if disconnected
- * 
- * This function is used to check the Serial connection and attempt to reconnect if it is disconnected.
- * It will check if the Serial port is connected, and if not, it will attempt to reconnect the Serial port.
- * 
- * @return bool Returns true if the Serial port is connected, false otherwise.
- * 
- * @note This function will attempt to reconnect the Serial port if it is disconnected.
- *      It will wait for a small delay before attempting to reconnect the Serial port.
- *      It will not attempt to reconnect the first time the Serial port is disconnected.
- *      This is to allow the main loop to run at least once before attempting to reconnect the Serial port.
- */
-bool checkSerialConnection(void) {
-  if (Serial) {
-    serialReconnecting = false;  // Reset if serial is connected
-    return true;
-  }
 
-  // Begin reconnection process
-  if (!serialReconnecting) {
-    serialReconnecting = true;
-    lastReconnectAttempt = millis();
-  }
-
-  // Perform reconnection steps based on timer
-  if (millis() - lastReconnectAttempt >= reconnectInterval) {
-    lastReconnectAttempt = millis();  // Update timer
-
-    // Perform a step in the reconnection process
-    if (!reconnectSerial()) {
-      return false;
-    } else {
-      serialReconnecting = false;  // Stop reconnection attempts
-      return true;
-    }
-  }
-}
 
 void setup() {
 
   // Initialize the Serial port
-  reconnectSerial();
-  // Serial.begin(SerialBaudRate);
-
+  connectSerial();
 
   // Initialize the axis
   axis.init();
@@ -181,17 +134,16 @@ void setup() {
  * @param start_time The start time of the loop in milliseconds
  * 
  */
-void manageLoopFrequency(unsigned long start_time) {
+// void manageLoopFrequency(unsigned long start_time) {
 
-  unsigned long elapsed_time = millis() - start_time;
-  if (elapsed_time < interval_ms) {
-    delay(interval_ms - elapsed_time);  // Delay the remaining time
-  }
-}
+//   unsigned long elapsed_time = millis() - start_time;
+//   if (elapsed_time < interval_ms) {
+//     delay(interval_ms - elapsed_time);  // Delay the remaining time
+//   }
+// }
 
 void loop() {
-  unsigned long start_time = millis();  // Record the start time of the loop
-
+  static unsigned long last_update_time = 0;  // Record the start time of the loop
   // Update the machine state
   // Also fetches the latest controller data
   // machine_state.updateMachineState();
@@ -199,8 +151,10 @@ void loop() {
   // IF no data has been received within a specified time window
   // THEN perform a hard stop and diable the motors (generates a motor fault)
   // ELSE continue with program
-  if (false) {
+  if (controller.readEstopSwitch()) {
     clearcore.disableMotors();
+    Serial.println("E-Stop is engaged, motors have been disabled. Disengage E-Stop to enable motor.");
+    delay(1000);
   } else {
     /** GUARDED ROUTINE
     ****************************************
@@ -213,8 +167,7 @@ void loop() {
     * THEN move the axis down
     * IF the zero axis button is pressed
     * THEN zero the axis
-    **/ 
-
+    **/
     double velocity_command = controller.readVelocityCommand();
     double torque_limit = controller.readTorqueCommand();
     bool axis_up_button_state = controller.readAxisUpButton();
@@ -226,25 +179,37 @@ void loop() {
     int32_t motor_speed;
 
     if (axis_up_button_state) {
-      Serial.println("Moving UP");
       motor_speed = axis.MoveAtVelocity(velocity_command);
     } else if (axis_down_button_state) {
-      Serial.println("Moving DOWN");
       motor_speed = axis.MoveAtVelocity(-velocity_command);
     } else {
-      Serial.println("Not Moving");
       motor_speed = axis.MoveAtVelocity(0);
+    }
+
+    // Update the serial port every serial_update_interval_ms
+    if ((millis() - last_update_time) > serial_update_interval_ms) {
+      // Publish data periodically, every DataCollectorUpdateInterval ms
+      // publishSerialDataPeriodically();
+      Serial.print("Axis Position [mm]: ");
+      Serial.print(axis.readCurrentPosition());
+      Serial.print(" \tAxis Velocity [mm/min]: ");
+      Serial.print(axis.getVelocityCurrent());
+      Serial.print(" \tMotor Speed [rpm]: ");
+      Serial.print(axis.getMotorVelocity());
+      Serial.print(" \tMotor Torque [%]: ");
+      Serial.print(axis.getMotorTorque());
+      Serial.print(" \tMotor Status: ");
+      Serial.println(axis.getStatusName());
+
+      last_update_time = millis();
     }
 
     // END OF GUARDED ROUTINE
   }
-    /** NON-GUARDED ROUTINE
+  /** NON-GUARDED ROUTINE
     ****************************************
     * LOGIC
     **/
-
-
-    // START OF NON-GUARDED ROUTINE
     // IF the clear faults button is pressed
     // THEN clear all faults
     if (controller.readClearFaultsButton()) {
@@ -252,26 +217,16 @@ void loop() {
       clearcore.clearFaults();
     }
     if (controller.readZeroAxisButton()) {
+      SerialPort.println("Zeroing Axis ...");
       axis.zeroPosition();
     }
 
-  // Update the serial port every serial_update_interval_ms
-  if ((millis() - start_time) < serial_update_interval_ms) {
-    // Publish data periodically, every DataCollectorUpdateInterval ms
-    // publishSerialDataPeriodically();
-    Serial.print("Axis Position: ");
-    Serial.print(axis.getPositionCurrent());
-    Serial.print("\tAxis Velocity: ");
-    Serial.print(axis.getVelocityCurrent());
-    Serial.print("\tMotor Speed: ");
-    Serial.print(axis.getMotorVelocity());
-    Serial.print("\tMotor Torque: ");
-    Serial.println(axis.getMotorTorque());
-  }
+  // START OF NON-GUARDED ROUTINE
+
   // Manage the loop frequency by applying a delay if required
   // manageLoopFrequency(start_time);
   // Pet watchdog to prevent system reset.
-  clearcore.resetWatchdog();
+  // clearcore.resetWatchdog();
 
   // END OF NON-GUARDED ROUTINE
 }
