@@ -29,6 +29,20 @@ const unsigned long serial_update_interval_ms = 250;  // ~10Hz
 // // Desired loop interval (static const)
 // const unsigned long interval_ms = 0;  // ~ 100Hz
 
+struct SerialData
+{
+  int32_t position;
+  int32_t velocity;
+  int32_t motor_speed;
+  int32_t torque_current;
+  int32_t torque_limit;
+  int32_t status;
+  int32_t faults;
+  int32_t controller_state;
+};
+
+const size_t serial_data_size = sizeof(SerialData);
+
 // Define Motor Parameters
 // ************************************************************************************************
 // Defaults are set in the MotorParameters constructor
@@ -87,8 +101,22 @@ bool connectSerial(void) {
   return (bool)Serial;
 }
 
+SerialData buildSerialData(void) {
+  SerialData data;
+  data.position = axis.readCurrentPosition();
+  data.velocity = axis.getVelocityCurrent();
+  data.motor_speed = axis.getMotorVelocity();
+  data.torque_current = axis.getMotorTorque();
+  data.torque_limit = axis.getTorqueLimit();
+  data.status = axis.getStatus();
+  data.faults = axis.getFaults();
+  data.controller_state = controller.getControllerState();
 
-void setup() {
+  return data;
+}
+
+void setup()
+{
 
   // Initialize the Serial port
   connectSerial();
@@ -186,23 +214,25 @@ void loop() {
       motor_speed = axis.MoveAtVelocity(0);
     }
 
-    // Update the serial port every serial_update_interval_ms
-    if ((millis() - last_update_time) > serial_update_interval_ms) {
-      Serial.print("Axis Position [mm]: ");
-      Serial.print(axis.readCurrentPosition());
-      Serial.print(" \tAxis Velocity [mm/min]: ");
-      Serial.print(axis.getVelocityCurrent());
-      Serial.print(" \tMotor Speed [rpm]: ");
-      Serial.print(axis.getMotorVelocity());
-      Serial.print(" \tMotor Torque [%]: ");
-      Serial.print(axis.getMotorTorque());
-      Serial.print(" \tTorque Limit [%]: ");
-      Serial.print(axis.getTorqueLimit());
-      Serial.print(" \tMotor Status: ");
-      Serial.println(axis.getStatusName());
+    publishSerialDataPeriodically();
 
-      last_update_time = millis();
-    }
+    // // Update the serial port every serial_update_interval_ms
+    // if ((millis() - last_update_time) > serial_update_interval_ms) {
+    //   Serial.print("Axis Position [mm]: ");
+    //   Serial.print(axis.readCurrentPosition());
+    //   Serial.print(" \tAxis Velocity [mm/min]: ");
+    //   Serial.print(axis.getVelocityCurrent());
+    //   Serial.print(" \tMotor Speed [rpm]: ");
+    //   Serial.print(axis.getMotorVelocity());
+    //   Serial.print(" \tMotor Torque [%]: ");
+    //   Serial.print(axis.getMotorTorque());
+    //   Serial.print(" \tTorque Limit [%]: ");
+    //   Serial.print(axis.getTorqueLimit());
+    //   Serial.print(" \tMotor Status: ");
+    //   Serial.println(axis.getStatusName());
+
+    //   last_update_time = millis();
+    // }
 
     // END OF GUARDED ROUTINE
   }
@@ -244,61 +274,41 @@ void loop() {
 //   return (abs(value1) > abs(value2)) ? value1 : value2;
 // }
 
-// void publishSerialDataPeriodically(void) {
-//   static unsigned long last_transmit_time = 0;
+void publishSerialDataPeriodically(void)
+{
+  static unsigned long last_transmit_time = 0;
 
-//   // Check if it's time to transmit data
-//   if (millis() - last_transmit_time >= data_collector_iterval_ms) {
-//     const uint8_t start_byte = 0xA5;
-//     const uint8_t end_byte = 0x5A;
-//     const size_t motordata_packet_size = sizeof(MotorData);
-//     const size_t motordata_buffer_size = motor_count * motordata_packet_size;
+  // Check if it's time to transmit data
+  if (millis() - last_transmit_time >= serial_update_interval_ms)
+  {
+    const uint8_t start_byte = 0xA5;
+    const uint8_t end_byte = 0x5A;
 
-//     // Create a dynamic buffer to hold the complete message
-//     // Packet Structure = [Start byte][Motor data][Machine state][controller state][End byte][CR]
-//     const size_t machine_state_size = sizeof(int32_t);
-//     const size_t controller_state_size = controller.getControllerStateSize();
-//     // const size_t controller_state_size = 0; // Disabled
-//     const size_t complete_buffer_size = 1 + motordata_buffer_size + machine_state_size + controller_state_size + 1 + 2;
-//     uint8_t complete_buffer[complete_buffer_size];  // Statically allocated buffer
+    // Packet Structure = [Start byte][SerialData][End byte][CR][LF]
+    const size_t buffer_size = 1 + serial_data_size + 1 + 2;
+    uint8_t buffer[buffer_size]; // Statically allocated buffer
 
-//     // Gather motor data into the buffer
-//     uint8_t motordata_buffer[motordata_buffer_size];
-//     clearcore.gatherMotorData(motordata_buffer, motordata_buffer_size);
+    SerialData serial_data = buildSerialData();
 
-//     // Get the machine state as a 32-bit integer
-//     int32_t machine_state_current = machine_state.getMachineState();
+    // Build the complete buffer
+    size_t buffer_index = 0;
+    buffer[buffer_index++] = start_byte; // Start byte
 
-//     uint8_t controller_state_buffer[controller_state_size];
-//     controller.getControllerState(controller_state_buffer, controller_state_size);
+    // Copy serial data into the complete buffer
+    memcpy(&buffer[buffer_index], &serial_data, serial_data_size);
+    buffer_index += serial_data_size;
 
-//     // Build the complete buffer
-//     size_t buffer_index = 0;
-//     complete_buffer[buffer_index++] = start_byte;  // Start byte
+    buffer[buffer_index++] = end_byte; // End byte
+    buffer[buffer_index++] = '\r';     // Carriage return
+    buffer[buffer_index++] = '\n';     // Line feed (newline)
 
-//     // Copy motor data into the complete buffer
-//     memcpy(&complete_buffer[buffer_index], motordata_buffer, motordata_buffer_size);
-//     buffer_index += motordata_buffer_size;
+    // Transmit the complete buffer
+    SerialPort.write(buffer, buffer_index);
 
-//     // Copy machine state into the complete buffer
-//     memcpy(&complete_buffer[buffer_index], &machine_state_current, machine_state_size);
-//     buffer_index += machine_state_size;
+    // Update the last transmit time
+    last_transmit_time = millis();
 
-//     // Copy controller state into the complete buffer
-//     memcpy(&complete_buffer[buffer_index], controller_state_buffer, controller_state_size);
-//     buffer_index += controller_state_size;
-
-//     complete_buffer[buffer_index++] = end_byte;  // End byte
-//     complete_buffer[buffer_index++] = '\r';      // Carriage return
-//     complete_buffer[buffer_index++] = '\n';      // Line feed (newline)
-
-//     // Transmit the complete buffer
-//     SerialPort.write(complete_buffer, buffer_index);
-
-//     // Update the last transmit time
-//     last_transmit_time = millis();
-
-//     // Wait for data to be written before proceeding
-//     // SerialPort.flush();
-//   }
-// }
+    // Optionally wait for data to be written before proceeding
+    // SerialPort.flush();
+  }
+}
