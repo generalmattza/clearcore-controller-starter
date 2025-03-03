@@ -188,8 +188,6 @@ void loop() {
 
     // Update the serial port every serial_update_interval_ms
     if ((millis() - last_update_time) > serial_update_interval_ms) {
-      // Publish data periodically, every DataCollectorUpdateInterval ms
-      // publishSerialDataPeriodically();
       Serial.print("Axis Position [mm]: ");
       Serial.print(axis.readCurrentPosition());
       Serial.print(" \tAxis Velocity [mm/min]: ");
@@ -198,6 +196,8 @@ void loop() {
       Serial.print(axis.getMotorVelocity());
       Serial.print(" \tMotor Torque [%]: ");
       Serial.print(axis.getMotorTorque());
+      Serial.print(" \tTorque Limit [%]: ");
+      Serial.print(axis.getTorqueLimit());
       Serial.print(" \tMotor Status: ");
       Serial.println(axis.getStatusName());
 
