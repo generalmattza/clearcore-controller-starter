@@ -78,6 +78,8 @@ float Axis::getMotorTorque(void)
     return (float)motor->getHlfbPercent();
 }
 
+
+
 /**
  * @brief Retrieves the current motor velocity in RPM.
  *
