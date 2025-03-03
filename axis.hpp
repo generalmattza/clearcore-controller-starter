@@ -18,10 +18,9 @@ private:
     double leadscrew_ratio;     // Ratio for the leadscrew
     double position_current;    ///< Current position of the axis.
     double velocity_current;    ///< Current velocity of the axis.
-    double torque_current;      ///< Current torque of the axis.
+    double torque_limit_current; ///< Current torque limit of the axis.
     double motor_direction_ref; ///< Motor direction multiplier (-1.0 or 1.0).
     double velocity_limit;      ///< Maximum allowable velocity.
-    double torque_limit;        ///< [Deprecated or unused variable?]
     double torque_limit_max;    ///< Maximum torque limit.
     double torque_limit_min;    ///< Minimum torque limit.
 
@@ -47,6 +46,7 @@ public:
         this->velocity_limit = velocity_limit;
         this->torque_limit_max = torque_limit_max;
         this->torque_limit_min = torque_limit_min;
+        this->torque_limit_current = 0;
     }
 
     /**
@@ -113,6 +113,13 @@ public:
 
     int32_t getAlerts(void) const;
     const char* getStatusName(void) const;
+
+    /**
+     * @brief Get the torque limit.
+     *
+     * @return double The current torque limit.
+     */
+    float getTorqueLimit(void);
 };
 
 #endif // __AXIS_HPP__

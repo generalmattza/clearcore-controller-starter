@@ -40,7 +40,7 @@ void Axis::limitMotorTorque(double torque_limit_command)
 {
     double torque_command = torque_limit_min + (torque_limit_command * (torque_limit_max - torque_limit_min));
     motor->LimitTorque(torque_command);
-    torque_current = torque_command;
+    torque_limit_current = torque_command;
 }
 
 /**
@@ -78,6 +78,15 @@ float Axis::getMotorTorque(void)
     return (float)motor->getHlfbPercent();
 }
 
+/**
+ * @brief Retrieves the current torque limit.
+ *
+ * @return float The current torque limit.
+ */
+float Axis::getTorqueLimit(void)
+{
+    return torque_limit_current;
+}
 
 
 /**
