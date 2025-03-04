@@ -108,8 +108,8 @@ SerialData buildSerialData(void) {
   data.motor_speed = axis.getMotorVelocity();
   data.torque_current = axis.getMotorTorque();
   data.torque_limit = axis.getTorqueLimit();
-  data.status = axis.getStatus();
-  data.faults = axis.getFaults();
+  data.status = motor0.getStatus();
+  data.faults = axis.getAlerts();
   data.controller_state = controller.getControllerState();
 
   return data;
@@ -181,7 +181,7 @@ void loop() {
   // ELSE continue with program
   if (controller.readEstopSwitch()) {
     clearcore.disableMotors();
-    Serial.println("E-Stop is engaged, motors have been disabled. Disengage E-Stop to enable motor.");
+    // Serial.println("E-Stop is engaged, motors have been disabled. Disengage E-Stop to enable motor.");
     delay(1000);
   } else {
     /** GUARDED ROUTINE
@@ -214,7 +214,6 @@ void loop() {
       motor_speed = axis.MoveAtVelocity(0);
     }
 
-    publishSerialDataPeriodically();
 
     // // Update the serial port every serial_update_interval_ms
     // if ((millis() - last_update_time) > serial_update_interval_ms) {
@@ -250,6 +249,9 @@ void loop() {
       SerialPort.println("Zeroing Axis ...");
       axis.zeroPosition();
     }
+
+    publishSerialDataPeriodically();
+
 
   // START OF NON-GUARDED ROUTINE
 

@@ -42,6 +42,8 @@ public:
     bool readClearFaultsButton(void);
     bool readZeroAxisButton(void);
     bool readEstopSwitch(void);
+    int32_t getControllerState(void);
+
 };
 
 #endif // __CONTROLLER_HPP__
