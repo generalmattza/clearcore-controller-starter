@@ -9,6 +9,7 @@
 // defines the Serial port as the USB connector
 // Options are Serial (USB), Serial0 (COM-0), Serial1 (COM-1)
 #define SerialPort Serial
+
 // define BAUD rate for the UART command. Using 115200
 // as that's the maximum for the ClearCore
 #define SerialBaudRate 115200
@@ -16,10 +17,7 @@
 // Flag to enable debug output
 #define DEBUG_OUTPUT false
 
-#define motorTorqueControlPin ConnectorA12
-#define motorVelocityControlPin ConnectorA11
-#define axisUpButtonPin ConnectorA10
-#define axisDownButtonPin ConnectorA9
+#define axisJoystickControlPin ConnectorA12
 #define clearFaultsButtonPin ConnectorDI8
 #define zeroAxisButtonPin ConnectorDI7
 #define estopSwitchPin ConnectorIO0
@@ -46,10 +44,10 @@ const size_t serial_data_size = sizeof(SerialData);
 // Define Motor Parameters
 // ************************************************************************************************
 // Defaults are set in the MotorParameters constructor
-MCMotorParameters motor_params;
+SDMotorParameters motor_params;
 
 // Define Motor objects
-MCMotor motor0(&ConnectorM0, "M0", &motor_params);
+SDMotor motor0(&ConnectorM0, "M0", &motor_params);
 
 Motor *motors[] = { &motor0 };
 uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
@@ -58,11 +56,11 @@ uint8_t motor_count = sizeof(motors) / sizeof(motors[0]);
 // ************************************************************************************************
 
 // Controller
-Controller controller(&motorTorqueControlPin, &motorVelocityControlPin, &axisUpButtonPin, &axisDownButtonPin, &clearFaultsButtonPin, &zeroAxisButtonPin, &estopSwitchPin);
+Controller controller(&axisJoystickControlPin, &clearFaultsButtonPin, &zeroAxisButtonPin, &estopSwitchPin);
 
 // Axis
-// Motor instance, gearbox_ratio, leadscrew_ratio, axis_velocity_limit (mm/min), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
-Axis axis(&motor0, 120.0, 8.0, 96.0, 0.8, 0.05, true);
+// Motor instance, pulley_ratio, leadscrew_ratio, axis_velocity_limit (RPM), torque_limit_max (0-1), torque_limit_min (0-1), motor_direction_ref (true/false)
+Axis axis(&motor0, 2.22, 2.54, 300, 0.9, 0.05, true);
 
 // ClearCore - Motion controller Interface
 teknic_cc clearcore(motors, motor_count, &SerialPort);
@@ -82,9 +80,12 @@ teknic_cc clearcore(motors, motor_count, &SerialPort);
  * @return bool Returns true if the Serial port is connected, false otherwise.
  */
 bool connectSerial(void) {
+
   // Attempt to reinitialize the Serial connection
-  delay(1000);  // Small delay to ensure proper reset
   Serial.begin(SerialBaudRate);
+
+  // Small delay to allow proper connection
+  delay(1000);  
 
   // Wait for Serial to reconnect
   unsigned long start_time = millis();
@@ -130,6 +131,9 @@ void setup()
   // Initialize the controller
   controller.init();
 
+  pinMode(IO3, OUTPUT);
+  digitalWrite(IO3, false);
+
   // Setup limit switches
   // motor0.setLimitSwitchNegative(DI6);
   // motor0.setLimitSwitchPositive(DI7);
@@ -171,67 +175,54 @@ void setup()
 // }
 
 void loop() {
-  static unsigned long last_update_time = 0;  // Record the start time of the loop
+  // static unsigned long last_update_time = 0;  // Record the start time of the loop
   // Update the machine state
   // Also fetches the latest controller data
   // machine_state.updateMachineState();
   // Watchdog on receipt of last data from controller
   // IF no data has been received within a specified time window
-  // THEN perform a hard stop and diable the motors (generates a motor fault)
+  // THEN perform a hard stop and disable the motors (generates a motor fault)
   // ELSE continue with program
-  if (controller.readEstopSwitch()) {
+  if (false) {
     clearcore.disableMotors();
-    // Serial.println("E-Stop is engaged, motors have been disabled. Disengage E-Stop to enable motor.");
-    delay(1000);
+    SerialPort.println("Controller communication timeout. Disabling motors.");
   } else {
     /** GUARDED ROUTINE
     ****************************************
     *
     * LOGIC
     * Read the controller inputs
-    * IF the axis up button is pressed
+    * IF the joystick is moved up
     * THEN move the axis up
-    * IF the axis down button is pressed
+    * IF the joystick is moved down
     * THEN move the axis down
     * IF the zero axis button is pressed
     * THEN zero the axis
     **/
-    double velocity_command = controller.readVelocityCommand();
-    double torque_limit = controller.readTorqueCommand();
-    bool axis_up_button_state = controller.readAxisUpButton();
-    bool axis_down_button_state = controller.readAxisDownButton();
 
+    double joystick_voltage; // volts
+    joystick_voltage = controller.readJoystickVoltage();
+    
+    double velocity_command; // steps/sec
+    double normalized_signal = (joystick_voltage - 2.56) / 2.56; // Normalize to range [-1, 1]
 
-    // Limit motor torque to the value read from the dial
-    axis.limitMotorTorque(torque_limit);
-    int32_t motor_speed;
+    // quadratic scaling so that the velocity is proportional to the square of the joystick signal
+    // in other words, the more extreme the joystick position is, the faster the velocity; the closer to the center, the slower the velocity
+    velocity_command = normalized_signal * normalized_signal;
 
-    if (axis_up_button_state) {
-      motor_speed = axis.MoveAtVelocity(velocity_command);
-    } else if (axis_down_button_state) {
-      motor_speed = axis.MoveAtVelocity(-velocity_command);
+    if (joystick_voltage > 2.7 && joystick_voltage < 5.05) {
+      axis.MoveAtVelocity(velocity_command);
+    } else if (joystick_voltage < 2.3 && joystick_voltage >= 0.05) {
+      axis.MoveAtVelocity(-velocity_command);
     } else {
-      motor_speed = axis.MoveAtVelocity(0);
+      axis.MoveAtVelocity(0);
     }
-
-
-    // // Update the serial port every serial_update_interval_ms
-    // if ((millis() - last_update_time) > serial_update_interval_ms) {
-    //   Serial.print("Axis Position [mm]: ");
-    //   Serial.print(axis.readCurrentPosition());
-    //   Serial.print(" \tAxis Velocity [mm/min]: ");
-    //   Serial.print(axis.getVelocityCurrent());
-    //   Serial.print(" \tMotor Speed [rpm]: ");
-    //   Serial.print(axis.getMotorVelocity());
-    //   Serial.print(" \tMotor Torque [%]: ");
-    //   Serial.print(axis.getMotorTorque());
-    //   Serial.print(" \tTorque Limit [%]: ");
-    //   Serial.print(axis.getTorqueLimit());
-    //   Serial.print(" \tMotor Status: ");
-    //   Serial.println(axis.getStatusName());
-
-    //   last_update_time = millis();
-    // }
+    
+    // double motor_velocity = axis.getMotorVelocity();
+    // Serial.print("Motor Velocity: ");
+    // Serial.println(motor_velocity);
+  
+   
 
     // END OF GUARDED ROUTINE
   }
@@ -241,16 +232,15 @@ void loop() {
     **/
     // IF the clear faults button is pressed
     // THEN clear all faults
-    if (controller.readClearFaultsButton()) {
-      SerialPort.println("Clearing faults ...");
-      clearcore.clearFaults();
-    }
-    if (controller.readZeroAxisButton()) {
-      SerialPort.println("Zeroing Axis ...");
-      axis.zeroPosition();
-    }
+    // if (controller.readClearFaultsButton()) {
+    //   SerialPort.println("Clearing faults ...");
+    //   clearcore.clearFaults();
+    // }
+    // if (controller.readZeroAxisButton()) {
+    //   SerialPort.println("Zeroing Axis ...");
+    //   axis.zeroPosition();
+    // }
 
-    publishSerialDataPeriodically();
 
 
   // START OF NON-GUARDED ROUTINE
@@ -276,41 +266,41 @@ void loop() {
 //   return (abs(value1) > abs(value2)) ? value1 : value2;
 // }
 
-void publishSerialDataPeriodically(void)
-{
-  static unsigned long last_transmit_time = 0;
+// void publishSerialDataPeriodically(void)
+// {
+//   static unsigned long last_transmit_time = 0;
 
-  // Check if it's time to transmit data
-  if (millis() - last_transmit_time >= serial_update_interval_ms)
-  {
-    const uint8_t start_byte = 0xA5;
-    const uint8_t end_byte = 0x5A;
+//   // Check if it's time to transmit data
+//   if (millis() - last_transmit_time >= serial_update_interval_ms)
+//   {
+//     const uint8_t start_byte = 0xA5;
+//     const uint8_t end_byte = 0x5A;
 
-    // Packet Structure = [Start byte][SerialData][End byte][CR][LF]
-    const size_t buffer_size = 1 + serial_data_size + 1 + 2;
-    uint8_t buffer[buffer_size]; // Statically allocated buffer
+//     // Packet Structure = [Start byte][SerialData][End byte][CR][LF]
+//     const size_t buffer_size = 1 + serial_data_size + 1 + 2;
+//     uint8_t buffer[buffer_size]; // Statically allocated buffer
 
-    SerialData serial_data = buildSerialData();
+//     SerialData serial_data = buildSerialData();
 
-    // Build the complete buffer
-    size_t buffer_index = 0;
-    buffer[buffer_index++] = start_byte; // Start byte
+//     // Build the complete buffer
+//     size_t buffer_index = 0;
+//     buffer[buffer_index++] = start_byte; // Start byte
 
-    // Copy serial data into the complete buffer
-    memcpy(&buffer[buffer_index], &serial_data, serial_data_size);
-    buffer_index += serial_data_size;
+//     // Copy serial data into the complete buffer
+//     memcpy(&buffer[buffer_index], &serial_data, serial_data_size);
+//     buffer_index += serial_data_size;
 
-    buffer[buffer_index++] = end_byte; // End byte
-    buffer[buffer_index++] = '\r';     // Carriage return
-    buffer[buffer_index++] = '\n';     // Line feed (newline)
+//     buffer[buffer_index++] = end_byte; // End byte
+//     buffer[buffer_index++] = '\r';     // Carriage return
+//     buffer[buffer_index++] = '\n';     // Line feed (newline)
 
-    // Transmit the complete buffer
-    SerialPort.write(buffer, buffer_index);
+//     // Transmit the complete buffer
+//     SerialPort.write(buffer, buffer_index);
 
-    // Update the last transmit time
-    last_transmit_time = millis();
+//     // Update the last transmit time
+//     last_transmit_time = millis();
 
-    // Optionally wait for data to be written before proceeding
-    // SerialPort.flush();
-  }
-}
+//     // Optionally wait for data to be written before proceeding
+//     // SerialPort.flush();
+//   }
+//}
