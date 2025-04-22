@@ -7,38 +7,26 @@
 
 class Controller
 {
-    DigitalInAnalogIn *torque_limit_dial_pin;
-    DigitalInAnalogIn *velocity_limit_dial_pin;
-    DigitalInAnalogIn *axis_up_button_pin;
-    DigitalInAnalogIn *axis_down_button_pin;
+    DigitalInAnalogIn *joystick_pin;
     DigitalIn *clear_faults_button_pin;
     DigitalIn *zero_axis_button_pin;
     DigitalIn *e_stop_switch_pin;
 
 public:
     Controller(
-        DigitalInAnalogIn *torque_limit_dial_pin,
-        DigitalInAnalogIn *velocity_limit_dial_pin,
-        DigitalInAnalogIn *axis_up_button_pin,
-        DigitalInAnalogIn *axis_down_button_pin,
+        DigitalInAnalogIn *joystick_pin,
         DigitalIn *clear_faults_button_pin,
         DigitalIn *zero_axis_button_pin,
         DigitalIn *e_stop_switch_pin
     )
     {
-        this->torque_limit_dial_pin = torque_limit_dial_pin;
-        this->velocity_limit_dial_pin = velocity_limit_dial_pin;
-        this->axis_up_button_pin = axis_up_button_pin;
-        this->axis_down_button_pin = axis_down_button_pin;
+        this->joystick_pin = joystick_pin;
         this->clear_faults_button_pin = clear_faults_button_pin;
         this->zero_axis_button_pin = zero_axis_button_pin;
         this->e_stop_switch_pin = e_stop_switch_pin;
     }
     void init(void);
-    double readTorqueCommand(void);
-    double readVelocityCommand(void);
-    bool readAxisUpButton(void);
-    bool readAxisDownButton(void);
+    double readJoystickVoltage(void);
     bool readClearFaultsButton(void);
     bool readZeroAxisButton(void);
     bool readEstopSwitch(void);

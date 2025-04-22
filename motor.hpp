@@ -168,6 +168,8 @@ public:
  */
 class SDMotor : public Motor {
 protected:
+    int32_t position_current;  ///< Current position command
+    double velocity_current;   ///< Current velocity command (as double)
     int32_t velocity_limit;    ///< Maximum velocity limit
     int32_t accel_limit;       ///< Acceleration limit
     int32_t decel_limit;       ///< Deceleration limit
@@ -205,11 +207,30 @@ public:
     bool MoveDistance(int distance) const;
 
     /**
+     * @brief Commands the motor to limit the applied torque.
+     * @param limit The desired torque limit.
+     * @return true if the command was accepted; false otherwise.
+     */
+    bool LimitTorque(double limit);
+
+    /**
+     * @brief Increments the current position.
+     * @param increment The amount to increment (default is 1).
+     */
+    virtual void incrementPosition(int32_t increment = 1);
+
+    /**
      * @brief Commands the motor to move at a specified velocity.
      * @param velocity Commanded velocity.
      * @return true if the command was accepted; false otherwise.
      */
     virtual bool MoveAtVelocity(int32_t velocity) override;
+
+    /**
+     * @brief Retrieves the motor direction.
+     * @return int_8t The motor direction.
+     */
+    uint8_t getMotorDirection(void) const;
 
     /**
      * @brief Retrieves the current commanded velocity.
@@ -280,7 +301,7 @@ public:
      * @brief Sets the motor's position reference.
      * @param position The new position reference (default is 0).
      */
-    void setPositionRef(int32_t position = 0) const;
+    void zeroPosition(int32_t position = 0);
 
     /**
      * @brief Checks the state of the emergency stop connector.

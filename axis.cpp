@@ -8,7 +8,6 @@
 void Axis::init(void)
 {
     motor->initMotor();
-    // analogReadResolution(adcResolution);
 }
 
 /**
@@ -17,13 +16,19 @@ void Axis::init(void)
  * This function scales the input velocity command by the velocity limit and drive ratio,
  * then commands the motor to move at that velocity.
  *
- * @param velocity_command The desired velocity command.
- * @return int32_t The scaled motor velocity that was commanded.
+ * @param velocity_command The desired velocity command, normalized between -1.0 and 1.0. 
+ * @return int32_t The scaled motor velocity that was commanded, in steps/s. 
  */
 int32_t Axis::MoveAtVelocity(double velocity_command)
-{
-    velocity_current = velocity_command * velocity_limit;
-    int32_t motor_velocity = velocity_current / leadscrew_ratio * gearbox_ratio;
+{   
+    // convert RPM to mm/s
+    double velocity_limit_mm_s; 
+    velocity_limit_mm_s = velocity_limit * (leadscrew_ratio / pulley_ratio) / 60; 
+    velocity_current = velocity_command * velocity_limit_mm_s;
+    Serial.println(velocity_limit);
+
+    // convert mm/s to steps/s
+    int32_t motor_velocity = velocity_current * 6400 * (1 / (leadscrew_ratio / pulley_ratio)); 
     motor->MoveAtVelocity(motor_velocity);
     return motor_velocity;
 }
@@ -53,7 +58,7 @@ void Axis::limitMotorTorque(double torque_limit_command)
  */
 double Axis::readCurrentPosition(void)
 {
-    position_current = motor_direction_ref * (double)motor->getPositionCurrent() / 8 / gearbox_ratio * leadscrew_ratio;
+    position_current = motor_direction_ref * (double)motor->getPositionCurrent() / 8 / pulley_ratio * leadscrew_ratio;
     return position_current;
 }
 

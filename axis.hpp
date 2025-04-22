@@ -13,8 +13,8 @@
 class Axis
 {
 private:
-    MCMotor *motor;             ///< Pointer to the motor associated with this axis.
-    double gearbox_ratio;          ///< Drive ratio for the axis.
+    SDMotor *motor;             ///< Pointer to the motor associated with this axis.
+    double pulley_ratio;        ///< Drive ratio for the axis.
     double leadscrew_ratio;     // Ratio for the leadscrew
     double position_current;    ///< Current position of the axis.
     double velocity_current;    ///< Current velocity of the axis.
@@ -28,18 +28,18 @@ public:
     /**
      * @brief Construct a new Axis object.
      *
-     * @param motor Pointer to an MCMotor object representing the motor.
-     * @param gearbox_ratio The drive ratio of the axis.
+     * @param motor Pointer to an SDMotor object representing the motor.
+     * @param pulley_ratio The drive ratio of the axis.
      * @param leadscrew_ratio The drive ratio of the axis.
      * @param velocity_limit The maximum velocity allowed.
      * @param torque_limit_max The maximum torque limit (default is 1.0).
      * @param torque_limit_min The minimum torque limit (default is 0.0).
      * @param motor_direction_ref Motor direction reference flag (default is true). If true, motor direction is reversed (-1.0).
      */
-    Axis(MCMotor *motor, double gearbox_ratio, double leadscrew_ratio, double velocity_limit, double torque_limit_max = 1.0, double torque_limit_min = 0.0, bool motor_direction_ref = true)
+    Axis(SDMotor *motor, double pulley_ratio, double leadscrew_ratio, double velocity_limit, double torque_limit_max = 1.0, double torque_limit_min = 0.0, bool motor_direction_ref = true)
     {
         this->motor = motor;
-        this->gearbox_ratio = gearbox_ratio;
+        this->pulley_ratio = pulley_ratio;
         this->leadscrew_ratio = leadscrew_ratio;
         this->motor_direction_ref = motor_direction_ref ? 1.0 : -1.0;
         this->position_current = 0;

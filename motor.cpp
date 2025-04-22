@@ -175,9 +175,6 @@ const char* Motor::getStatusName(void) {
   return getMotorReadyStateName(connector->StatusReg().bit.ReadyState);
 }
 
-
-
-
 /**
  * @brief Disables the motor by stopping it and disabling the enable request.
  */
@@ -283,7 +280,7 @@ void SDMotor::initMotor(void) {
  * @return int32_t The current position reference.
  */
 int32_t SDMotor::getPositionCurrent(void) const {
-    return connector->PositionRefCommanded();
+    return this->position_current;
 }
 
 /**
@@ -310,8 +307,8 @@ bool SDMotor::validateMove(bool negDirection) const {
  *
  * @param position The new position reference.
  */
-void SDMotor::setPositionRef(int32_t position) const {
-    connector->PositionRefSet(position);
+void SDMotor::zeroPosition(int32_t position) {
+    this->position_current = position;
 }
 
 /**
@@ -387,6 +384,32 @@ bool SDMotor::MoveAtVelocity(int32_t velocity) {
     }
     connector->MoveVelocity(velocity);
     return true;
+}
+
+uint8_t SDMotor::getMotorDirection(void) const
+{
+    static uint8_t last_direction = 1; // default direction (-1 for CW, 1 for CCW)
+
+    if (this->velocity_current > 0)
+    {
+        last_direction = 1;
+    }
+    else if (this->velocity_current < 0)
+    {
+        last_direction = -1;
+    }
+    // If velocity_current is 0, we simply return the last known direction.
+    return last_direction;
+}
+
+/**
+ * @brief Increments the motor's current position.
+ *
+ * @param increment The amount by which to increment the position.
+ */
+void SDMotor::incrementPosition(int32_t increment) {
+    int8_t direction = this->getMotorDirection();
+    this->position_current += direction * increment;
 }
 
 // -------------------- MCMotor Class Implementation --------------------
